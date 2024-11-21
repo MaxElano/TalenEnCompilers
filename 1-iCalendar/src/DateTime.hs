@@ -31,38 +31,32 @@ newtype Second = Second { runSecond :: Int } deriving (Eq, Ord)
 parseDateTime :: Parser Char DateTime
 parseDateTime = DateTime <$> parseDate <*> parseTime
 
-parseDate :: [Char] -> [(Date, [Char])]
-parseDate input = Date <$> parseYear <*> parseMonth <*> parseDay input
+parseDate :: Parser Char Date
+parseDate = Date <$> parseYear <*> parseMonth <*> parseDay
 
 parseYear :: Parser Char Year
-parseYear input = [(Year $ read year, tail)]
-    where (year, tail) = splitAt 4 input
+parseYear = Year <$> newdigit
 
 parseMonth :: Parser Char Month
-parseMonth input = [(Month $ read month, tail)]
-    where (month, tail) = splitAt 4 input
+parseMonth = Month <$> newdigit
 
 parseDay :: Parser Char Day
-parseDay input = [(Day $ read month, tail)]
-    where (month, tail) = splitAt 4 input
-
--- parseString :: String -> Parser Char String
--- parseString str input = case stripPrefix str input of
-    -- Nothing -> []
-    -- Just tail -> [(str, tail)]
+parseDay = Day <$> newdigit
 
 parseTime :: Parser Char Time
-parseTime = undefined
+parseTime = Time <$> parseHour <*> parseMinute <*> parseSecond
 
 parseHour :: Parser Char Hour
-parseHour = undefined
+parseHour = Hour <$> newdigit
 
 parseMinute :: Parser Char Minute
-parseMinute = undefined
+parseMinute = Minute <$> newdigit
 
 parseSecond :: Parser Char Second
-parseSecond = undefined
+parseSecond = Second <$> newdigit
 
+parseUtc :: Parser Char Bool
+parseUtc = (\x -> x == 'T') <$>
 
 -- Exercise 2
 run :: Parser a b -> [a] -> Maybe b
