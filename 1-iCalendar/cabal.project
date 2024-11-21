@@ -1,0 +1,6 @@
+packages: .
+
+source-repository-package
+  type: git
+  location: https://git.science.uu.nl/b3tc/uu-tc.git
+  tag: 6efbd4f
