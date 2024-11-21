@@ -26,9 +26,11 @@ instance Show Result where
     show (Valid x)   = "valid date: " ++ show x
 
 main :: IO ()
-main = do
-  setNewlineTranslations
-  mainDateTime
+main = print $ parse parseYear "2022222222"
+
+--main = do
+--  setNewlineTranslations
+--  mainDateTime
 
 mainDateTime :: IO ()
 mainDateTime = interact (printOutput . processCheck . processInput)
