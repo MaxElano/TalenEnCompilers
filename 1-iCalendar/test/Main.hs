@@ -5,6 +5,9 @@
 -- Feel free to use ghci instead, or to change functions here to test whatever you want.
 -- We'll ignore anything in this file when grading!
 
+--Names:
+--Max Ferket 7337248
+--Daniël van der Hoeven 5041503
 
 module Main where
 
