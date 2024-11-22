@@ -119,4 +119,39 @@ parsePrint s = fmap printDateTime $ run parseDateTime s
 
 -- Exercise 5
 checkDateTime :: DateTime -> Bool
-checkDateTime = undefined
+checkDateTime (DateTime date time _)= checkDate date && checkTime time
+
+checkDate :: Date -> Bool
+checkDate (Date year month day) = checkYear year && checkMonth month && checkDay day month year
+
+checkYear :: Year -> Bool
+checkYear (Year year) = between 0 9999 year
+
+checkMonth :: Month -> Bool
+checkMonth (Month month) = between 0 12 month
+
+checkDay :: Day -> Month -> Year -> Bool
+checkDay (Day day) (Month month) (Year year)
+                    | month `elem` [1,3,5,7,8,10,12] = between 0 31 day
+                    | month `elem` [4,6,9,11]        = between 0 30 day
+                    | month `elem` [2] && (isYearLeapYear year) = between 0 29 day
+                    | month `elem` [2] && (not (isYearLeapYear year)) = between 0 28 day
+                    | otherwise                  = False
+
+isYearLeapYear :: Int -> Bool
+isYearLeapYear year = year `mod` 4 == 0 && (year `mod` 100 /= 0 || year `mod` 400 == 0)
+
+checkTime :: Time -> Bool
+checkTime (Time hour minute second) = checkHour hour && checkMinute minute && checkSecond second
+
+checkHour :: Hour -> Bool
+checkHour (Hour hour) = between 0 23 hour
+
+checkMinute :: Minute -> Bool
+checkMinute (Minute minute) = between 0 59 minute
+
+checkSecond :: Second -> Bool
+checkSecond (Second second) = between 0 59 second
+
+between :: Int -> Int -> Int -> Bool
+between l h v = l <= v && v <= h
