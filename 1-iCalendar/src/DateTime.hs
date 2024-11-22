@@ -76,7 +76,43 @@ run = undefined
 
 -- Exercise 3
 printDateTime :: DateTime -> String
-printDateTime = undefined
+printDateTime (DateTime date time utc) = printDate date ++ printSep ++ printTime time ++ printUtc utc
+
+printDate :: Date -> String
+printDate (Date year month day) = printYear year ++ printMonth month ++ printDay day
+
+printYear :: Year -> String
+printYear (Year runYear) = printAmountOfString runYear 4
+
+printMonth :: Month -> String
+printMonth (Month runMonth) = printAmountOfString runMonth 2
+
+printDay :: Day -> String
+printDay (Day runDay) = printAmountOfString runDay 2
+
+printSep :: String
+printSep = "T"
+
+printTime :: Time -> String
+printTime (Time hour minute second) = printHour hour ++ printMinute minute ++ printSecond second
+
+printHour :: Hour -> String
+printHour (Hour runHour) = printAmountOfString runHour 2
+
+printMinute :: Minute -> String
+printMinute (Minute runMinute) = printAmountOfString runMinute 2
+
+printSecond :: Second -> String
+printSecond (Second runSecond) = printAmountOfString runSecond 2
+
+printUtc :: Bool -> String
+printUtc True  = "Z"
+printUtc False = ""
+
+printAmountOfString :: Int -> Int -> String
+printAmountOfString value index = addZeros (show value) index
+    where addZeros :: String -> Int -> String
+          addZeros xs index = (replicate (index - length xs) '0') ++ xs
 
 -- Exercise 4
 parsePrint s = fmap printDateTime $ run parseDateTime s
