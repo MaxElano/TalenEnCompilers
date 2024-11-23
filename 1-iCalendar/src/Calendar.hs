@@ -5,10 +5,20 @@ import DateTime
 
 
 -- Exercise 6
-data Calendar = Calendar
+data Calendar = Calendar { calprop :: Calprop
+                         , eventList :: [Event] }
     deriving (Eq, Ord, Show)
 
-data Event = Event
+data Calprop = Calprop { prodid  :: String 
+                       , version :: String } --Always 2.0
+
+data Event = Event { uid         :: String
+                   , dtstamp     :: DateTime
+                   , dtstart     :: DateTime
+                   , dtend       :: DateTime
+                   , description :: String
+                   , summary     :: String
+                   , location    :: String}
     deriving (Eq, Ord, Show)
 
 -- Exercise 7

@@ -27,7 +27,7 @@ This directory contains an un-finished parser for a subset of the [iCalendar fil
     ```haskell
     run :: Parser a b -> [a] -> Maybe b
     ```
-
+R
     that applies a parser to an input sequence.
 
     `run` should return the first result that is a complete parse,
