@@ -5,12 +5,12 @@ import DateTime
 
 
 -- Exercise 6
-data Calendar = Calendar { calprop :: Calprop
+data Calendar = Calendar { prodid    :: String     --Used to be calprop :: Calprop, but not really neccesarry cause that would be for only 1 value.
                          , eventList :: [Event] }
     deriving (Eq, Ord, Show)
 
-data Calprop = Calprop { prodid  :: String 
-                       , version :: String } --Always 2.0
+--data Calprop = Calprop { prodid  :: String }
+                       --, version :: String } --Defined in ical-calendar-spec.md as always 2.0 so no need to store
 
 data Event = Event { uid         :: String
                    , dtstamp     :: DateTime
