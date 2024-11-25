@@ -72,7 +72,12 @@ parseUtc = (\x -> x =='Z') <$> symbol 'Z'
 
 -- Exercise 2
 run :: Parser a b -> [a] -> Maybe b
-run = undefined
+run parser [] = Nothing
+run parser list | null filteredParses = Nothing
+                | otherwise = Just result
+            where parses = parse parser list
+                  filteredParses = filter (\(_,remainder) -> null remainder) parses
+                  (result,_) = head filteredParses
 
 -- Exercise 3
 printDateTime :: DateTime -> String
