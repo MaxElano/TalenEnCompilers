@@ -16,9 +16,9 @@ data Event = Event { uid         :: String
                    , dtstamp     :: DateTime
                    , dtstart     :: DateTime
                    , dtend       :: DateTime
-                   , description :: String
-                   , summary     :: String
-                   , location    :: String}
+                   , description :: Maybe String
+                   , summary     :: Maybe String
+                   , location    :: Maybe String}
     deriving (Eq, Ord, Show)
 
 -- Exercise 7
