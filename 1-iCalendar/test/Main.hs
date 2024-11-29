@@ -20,20 +20,14 @@ import System.IO
 
 data Result = SyntaxError | Invalid DateTime | Valid DateTime deriving (Eq, Ord)
 
-instance Show DateTime where
-    show = printDateTime
-
 instance Show Result where
     show SyntaxError = "date/time with wrong syntax"
     show (Invalid _) = "good syntax, but invalid date or time values"
     show (Valid x)   = "valid date: " ++ show x
 
-main :: IO ()
-main = print $ parse parseYear "2022222222"
-
---main = do
---  setNewlineTranslations
---  mainDateTime
+main = do
+  setNewlineTranslations
+  mainCalendar
 
 mainDateTime :: IO ()
 mainDateTime = interact (printOutput . processCheck . processInput)
