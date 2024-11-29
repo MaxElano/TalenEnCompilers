@@ -13,14 +13,14 @@ data Calendar = Calendar { calprop    :: [Calprop]
                          , eventList  :: [Event] }
     deriving (Eq, Ord, Show)
 
-data Calprop 
+data Calprop
     = ProdID String
     | Version String
     deriving (Eq, Ord, Show)
 
 data Event = Event [EventProp] deriving (Eq, Ord, Show)
 
-data EventProp 
+data EventProp
     = DTStamp DateTime
     | UID String
     | DTStart DateTime
@@ -34,14 +34,17 @@ data EventProp
 newtype Token = Token { token :: String } deriving (Eq, Ord, Show)
 
 lexCalendar :: Parser Char [Token]
-lexCalendar = filterTokens <$> listOf (Token <$> many (satisfy (/= '\r'))) (ParseLib.token "\r\n")
+lexCalendar = concatTokens . filterTokens <$> listOf (Token <$> many (satisfy (/= '\r'))) (ParseLib.token "\r\n")
 
 filterTokens :: [Token] -> [Token]
 filterTokens = filter (not . (\(Token t) -> null t))
 
 concatTokens :: [Token] -> [Token]
-concatTokens [] = []
-concatTokens (t:ts) = t : concatTokens ts
+concatTokens ((Token t1):(Token t2):ts)
+    | head t2 == ' ' = Token (t1++drop 1 t2):concatTokens ts
+    | otherwise      = Token t1 : concatTokens (Token t2:ts)
+concatTokens [t] = [t]
+concatTokens []  = []
 
 parseCalendar :: Parser Token Calendar
 parseCalendar = pack parseStartCal parseInsideCalendar parseEndCal
@@ -77,7 +80,7 @@ parseEvent :: Parser Token Event
 parseEvent = Event <$> many parseEventProp
 
 parseEventProp :: Parser Token EventProp
-parseEventProp = parseUID <<|> parseDTStamp <<|> parseDTStart <<|> parseDTEnd <<|> parseDescription <<|> parseSummary <<|> parseLocation 
+parseEventProp = parseUID <<|> parseDTStamp <<|> parseDTStart <<|> parseDTEnd <<|> parseDescription <<|> parseSummary <<|> parseLocation
 
 parseUID :: Parser Token EventProp
 parseUID = (\(Token t) -> UID $ drop 4 t) <$> satisfy (\(Token t) -> "UID:" `isPrefixOf` t)
