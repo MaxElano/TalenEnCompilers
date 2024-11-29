@@ -39,6 +39,10 @@ lexCalendar = filterTokens <$> listOf (Token <$> many (satisfy (/= '\r'))) (Pars
 filterTokens :: [Token] -> [Token]
 filterTokens = filter (not . (\(Token t) -> null t))
 
+concatTokens :: [Token] -> [Token]
+concatTokens [] = []
+concatTokens (t:ts) = t : concatTokens ts
+
 parseCalendar :: Parser Token Calendar
 parseCalendar = pack parseStartCal parseInsideCalendar parseEndCal
 
