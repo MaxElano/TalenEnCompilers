@@ -1,0 +1,41 @@
+cabal-version:       3.0
+
+name:                assignment-arrow
+
+version:             0.1.0.0
+
+author:              Talen & Compilers
+
+build-type:          Simple
+
+executable arrow
+  main-is:             Main.hs
+
+  build-depends:       base >=4.14,
+                       containers,
+                       uu-tc == 2024.1.1,
+                       array,
+                       assignment-arrow
+
+  hs-source-dirs:      app
+
+  default-language:    Haskell2010
+
+library 
+  exposed-modules:      Algebra
+                      , Model
+                      , Interpreter
+                      , Lexer
+                      , Parser
+
+  build-depends:       base >=4.14,
+                       containers,
+                       uu-tc == 2024.1.1,
+                       array
+
+  build-tool-depends:  alex:alex,
+                       happy:happy
+
+  hs-source-dirs:      src
+
+  default-language:    Haskell2010
