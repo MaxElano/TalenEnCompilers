@@ -1,7 +1,7 @@
 module Model where
 
 -- Exercise 1
-data Token = Token deriving Show
+data Token = Token
   | TokArrow         -- "->"
   | TokPeriod        -- "."
   | TokComma         -- ","
@@ -24,12 +24,8 @@ data Token = Token deriving Show
   | TokBoundary      -- "Boundary"
   | TokWildcard      -- "_"
   | TokIdent String  -- Identifier
+  | TokComment String -- Comment
+    deriving Show
 
 -- Exercise 2
 data Program = Program deriving Show
-    | Command Command
-
-
-data Command = Command deriving Show
-    | Turn Left
-    | Turn Right
