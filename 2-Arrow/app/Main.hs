@@ -19,23 +19,17 @@ batch = undefined
 
 main :: IO ()
 main = do
-  input <- readFile "examples/Add.arrow"
-  print $ alexScanTokens input
-
-
--- main :: IO ()
--- main = do
---   chars <- readFile "examples/Add.arrow"
---   putStrLn "Input program:"
---   putStrLn ""
---   putStrLn chars
---   putStrLn ""
---   let tokens = alexScanTokens chars
---   putStrLn "Tokens:"
---   putStrLn ""
---   print tokens
---   let arr = parser tokens
---   putStrLn "Parsed program:"
---   putStrLn ""
---   print arr
+  chars <- readFile "examples/Add.arrow"
+  putStrLn "Input program:"
+  putStrLn ""
+  putStrLn chars
+  putStrLn ""
+  let tokens = alexScanTokens chars
+  putStrLn "Tokens:"
+  putStrLn ""
+  print tokens
+  let arr = parser tokens
+  putStrLn "Parsed program:"
+  putStrLn ""
+  print arr
 

@@ -23,37 +23,35 @@ data Token = Token
   | TokAsteroid      
   | TokBoundary      
   | TokWildcard      
-  | TokIdent String  
+  | TokIdent Ident2  
   | TokComment String
-    deriving Show
+    deriving (Show, Eq)
 
 -- Exercise 2
-data Program = Program [Rule]
-    deriving Show
+type Program = [Rule]
 
-data Rule = Rule Ident [Command]
-    deriving Show
+data Rule = Rule Ident2 [Command]
+    deriving (Show, Eq)
 
-data Ident = Ident String 
-    deriving Show
+type Ident2 = String 
 
-data Command = Command
-    | ComGo
+data Command
+    = ComGo
     | ComTake
     | ComMark
     | ComNothing
     | ComTurn Direction
     | ComCase Direction [Alt]
-    | ComIdent
-    deriving Show
+    | ComIdent Ident2
+    deriving (Show, Eq)
 
 data Direction = DirLeft
     | DirRight
     | DirFront
-    deriving Show
+    deriving (Show, Eq)
 
 data Alt = Alt Pattern [Command]
-    deriving Show
+    deriving (Show, Eq)
 
 data Pattern = PatEmpty 
     | PatLambda 
@@ -61,5 +59,5 @@ data Pattern = PatEmpty
     | PatAsteroid 
     | PatBoundary 
     | PatWildcard
-    deriving show
+    deriving (Show, Eq)
 
