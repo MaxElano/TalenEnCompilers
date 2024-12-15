@@ -17,7 +17,7 @@ type Algebra r =
     )
 
 fold :: Algebra r -> Program -> r
-fold (proAlgebra, rulAlgebra, comAlgebra, dirAlgebra, patAlgebra, altAlgebra) = doProgram
+fold (proAlgebra, rulAlgebra, comAlgebra, dirAlgebra, patAlgebra, altAlgebra) = setProgram
   where
     setProgram :: Program -> r
     setProgram = proAlgebra . map setRule
@@ -25,25 +25,24 @@ fold (proAlgebra, rulAlgebra, comAlgebra, dirAlgebra, patAlgebra, altAlgebra) = 
     setRule :: Rule -> r
     setRule (Rule ident commands) = rulAlgebra ident (map setCommand commands)
 
-    setCommand :: Command -> r 
+    setCommand :: Command -> r
     setCommand ComGo          = comAlgebra ComGo
     setCommand ComTake        = comAlgebra ComTake
     setCommand ComMark        = comAlgebra ComMark
     setCommand ComNothing     = comAlgebra ComNothing
-    setCommand ComTurn d      = comAlgebra (ComTurn (dirAlgebra d))
-    setCommand ComCase d alts = comAlgebra (ComCase (dirAlgebra d) (map setAlt alts))
-    setCommand ComIdent text  = comAlgebra (ComIdent text)
+    setCommand (ComTurn d)    = comAlgebra (ComTurn d)
+    setCommand (ComCase d alts) = comAlgebra (ComCase (dirAlgebra d) (map setAlt alts))
+    setCommand (ComIdent text) = comAlgebra (ComIdent text)
 
-    setAlt :: Alt -> r 
-    setAlt (Alt pattern commands) = altAlgebra (Alt (patAlgebra pattern) (map setCommand commands))
-
+    setAlt :: Alt -> r
+    setAlt (Alt pattern commands) = altAlgebra (pattern, map setCommand commands)
 
 
 -- Exercise 6
 
 checkProgram :: Program -> Bool
 checkProgram program =
-  let result = foldAnalysis analysisAlgebra program
+  let result = foldAnalysis checkAlgebra program
   in  "start" `Set.member` definedRules result
       && Set.isSubsetOf (calledRules result) (definedRules result)
       && not (hasDuplicates result)
@@ -77,18 +76,23 @@ foldAnalysis (combineRules, checkRule, checkCommand, _, checkPattern, checkAlt) 
       let ruleResult = checkRule name (map checkCommand commands)
       in ruleResult { definedRules = Set.insert name (definedRules ruleResult) }
 
+    checkCommand :: Command -> CheckResult
     checkCommand ComGo          = initialResult
     checkCommand ComTake        = initialResult
     checkCommand ComMark        = initialResult
     checkCommand ComNothing     = initialResult
-    checkCommand ComTurn _      = initialResult
-    checkCommand ComCase _ alts = foldr (combineCheck checkAlt) initialResult (map checkAlt' alts)
-    checkCommand ComIdent name  = initialResult { calledRules = Set.singleton name }
+    checkCommand (ComTurn _)    = initialResult
+    checkCommand (ComCase _ alts) = foldr (\(patternCovered, result) acc -> 
+                                            acc { hasMissingCatchAll = hasMissingCatchAll acc || not patternCovered }
+                                        ) initialResult (map checkAlt' alts)
+    checkCommand (ComIdent name)  = initialResult { calledRules = Set.singleton name }
 
+    checkAlt' :: Alt -> (Bool, CheckResult)
     checkAlt' (Alt pat cmds) =
-      let patternCovered = checkPattern pat
-          commandResults = map checkCommand cmds
-      in (patternCovered, commandResults)
+        let patternCovered = checkPattern pat
+            commandResults = map checkCommand cmds
+        in (patternCovered, foldr combineCheck initialResult commandResults)
+
 
     combineCheck f (patternCovered, results) acc =
       let altResult = f (patternCovered, results)
