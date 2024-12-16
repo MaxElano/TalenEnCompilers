@@ -12,9 +12,10 @@ import Lexer
 import Parser
 import Model
 import Algebra
+import Data.List
 
 
-data Contents  =  Empty | Lambda | Debris | Asteroid | Boundary
+data Contents  =  Empty | Lambda | Debris | Asteroid | Boundary deriving Eq
 
 type Size      =  Int
 type Pos       =  (Int, Int)
@@ -53,8 +54,25 @@ contentsTable =  [ (Empty   , '.' )
 
 -- Exercise 7
 printSpace :: Space -> String
-printSpace = undefined
+printSpace space = concatMap printSpaceLine cs
+  where
+    spaceKeys = L.keys space
+    (_,width) = spaceKeys !! (length spaceKeys - 1)
+    spaceValues = L.elems space
+    cs = splitSpace width spaceValues
 
+printSpaceLine :: [Contents] -> String
+printSpaceLine space = concatMap handleChar space ++ "\r\n"
+  where
+    handleChar c = maybe "" (\(_,char) -> [char]) (findContent c)
+
+findContent :: Contents -> Maybe (Contents, Char)
+findContent c1 = find (\(c2,char) -> c1 == c2) contentsTable
+
+splitSpace :: Int -> [Contents] -> [[Contents]]
+splitSpace _ [] = []
+splitSpace n cs = let (splt1,splt2) = splitAt n cs
+                  in splt1 : splitSpace n splt2
 
 -- These three should be defined by you
 type Ident = ()
