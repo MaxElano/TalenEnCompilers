@@ -1,107 +1,181 @@
+{-# LANGUAGE TupleSections #-}
+
 module Algebra where
+
+
 
 import Model
 import Data.List (nub, (\\))
 
 
 -- Exercise 5
-data ProgramAlg r = ProgramAlg
-  { algRule :: Ident2 -> [r] -> r -- Handles a rule
-  , algCommand :: Command -> r    -- Handles a command
-  , algDirection :: Direction -> r -- Handles a direction
-  , algAlt :: Pattern -> [r] -> r -- Handles an alternative
-  , algPattern :: Pattern -> r    -- Handles a pattern
-  }
+
+type Algebra r =
+  ( [r] -> r                -- programAlg: Combine rules into a program
+  , Ident2 -> [r] -> r       -- ruleAlg: Combine an identifier and commands into a rule
+  , r                       -- cmdGoAlg: Represents the "go" command
+  , r                       -- cmdTakeAlg: Represents the "take" command
+  , r                       -- cmdMarkAlg: Represents the "mark" command
+  , r                       -- cmdNothingAlg: Represents the "nothing" command
+  , Direction -> r          -- cmdTurnAlg: Represents the "turn" command
+  , Direction -> [r] -> r   -- cmdCaseAlg: Represents the "case" command
+  , Ident2 -> r              -- cmdIdentAlg: Represents an identifier invocation
+  , r                       -- dirLeftAlg: Represents the "left" direction
+  , r                       -- dirRightAlg: Represents the "right" direction
+  , r                       -- dirFrontAlg: Represents the "front" direction
+  , Pattern -> [r] -> r     -- altAlg: Represents a pattern and commands
+  , r                       -- patEmptyAlg: Represents the "Empty" pattern
+  , r                       -- patLambdaAlg: Represents the "Lambda" pattern
+  , r                       -- patDebrisAlg: Represents the "Debris" pattern
+  , r                       -- patAsteroidAlg: Represents the "Asteroid" pattern
+  , r                       -- patBoundaryAlg: Represents the "Boundary" pattern
+  , r                       -- patWildcardAlg: Represents the "_" wildcard pattern
+  )
+
 
 -- Fold function for the program
-foldProgram :: ProgramAlg r -> Program -> [r]
-foldProgram alg = map (foldRule alg)
+foldProgram :: Algebra r -> Program -> r
+foldProgram (programAlg, ruleAlg, cmdGoAlg, cmdTakeAlg, cmdMarkAlg, cmdNothingAlg,
+             cmdTurnAlg, cmdCaseAlg, cmdIdentAlg, dirLeftAlg, dirRightAlg, dirFrontAlg,
+             altAlg, patEmptyAlg, patLambdaAlg, patDebrisAlg, patAsteroidAlg,
+             patBoundaryAlg, patWildcardAlg) = goProgram
+  where
+    goProgram :: Program -> r
+    goProgram = programAlg . map goRule
 
-foldRule :: ProgramAlg r -> Rule -> r
-foldRule alg (Rule ident cmds) = algRule alg ident (map (foldCommand alg) cmds)
+    goRule :: Rule -> r
+    goRule (Rule ident cmds) = ruleAlg ident (map goCmd cmds)
 
-foldCommand :: ProgramAlg r -> Command -> r
-foldCommand alg cmd = case cmd of
-  ComGo            -> algCommand alg ComGo
-  ComTake          -> algCommand alg ComTake
-  ComMark          -> algCommand alg ComMark
-  ComNothing       -> algCommand alg ComNothing
-  ComTurn dir      -> algCommand alg (ComTurn (foldDirection alg dir))
-  ComCase dir alts -> algCommand alg (ComCase (foldDirection alg dir) (map (foldAlt alg) alts))
-  ComIdent ident   -> algCommand alg (ComIdent ident)
+    goCmd :: Command -> r
+    goCmd cmd = case cmd of
+      ComGo              -> cmdGoAlg
+      ComTake            -> cmdTakeAlg
+      ComMark            -> cmdMarkAlg
+      ComNothing         -> cmdNothingAlg
+      ComTurn dir        -> cmdTurnAlg (goDir dir)
+      ComCase dir alts   -> cmdCaseAlg (goDir dir) (map goAlt alts)
+      ComIdent ident    -> cmdIdentAlg ident
 
-foldDirection :: ProgramAlg r -> Direction -> r
-foldDirection alg dir = algDirection alg dir
+    goDir :: Direction -> r
+    goDir dir = case dir of
+      DirLeft  -> dirLeftAlg
+      DirRight -> dirRightAlg
+      DirFront -> dirFrontAlg
 
-foldAlt :: ProgramAlg r -> Alt -> r
-foldAlt alg (Alt pat cmds) = algAlt alg (foldPattern alg pat) (map (foldCommand alg) cmds)
+    goAlt :: Alt -> r
+    goAlt (Alt pat cmds) = altAlg (goPat pat) (map goCmd cmds)
 
-foldPattern :: ProgramAlg r -> Pattern -> r
-foldPattern alg pat = algPattern alg pat
-
-
+    goPat :: Pattern -> r
+    goPat pat = case pat of
+      PatEmpty     -> patEmptyAlg
+      PatLambda    -> patLambdaAlg
+      PatDebris    -> patDebrisAlg
+      PatAsteroid  -> patAsteroidAlg
+      PatBoundary  -> patBoundaryAlg
+      PatWildcard  -> patWildcardAlg
 
 -- Exercise 6
 checkProgram :: Program -> Bool
-checkProgram program = and
-  [ noUndefinedRules program
-  , hasStartRule program
-  , noDuplicateRules program
-  , allCasesExhaustive program
-  ]
+checkProgram program =
+  let (definedRules, usedRules) = foldProgram collectRulesAlgebra program
+      hasStart = foldProgram hasStartRuleAlgebra program
+      allRules = foldProgram noDuplicateRulesAlgebra program
+      exhaustive = foldProgram allCasesExhaustiveAlgebra program
+   in and
+        [ null (usedRules \\ definedRules) -- No undefined rules
+        , hasStart -- "start" rule exists
+        , length allRules == length (nub allRules) -- No duplicate rules
+        , exhaustive -- All cases exhaustive
+        ]
 
--- 1. Check for undefined rules
-noUndefinedRules :: Program -> Bool
-noUndefinedRules program =
-  let definedRules = map (\(Rule ident _) -> ident) program
-      usedRules = collectUsedRules program
-   in null (usedRules \\ definedRules) -- All used rules must be defined
+collectRulesAlgebra :: Algebra ([Ident2], [Ident2])
+collectRulesAlgebra =
+  ( unzip . map (\(defs, uses) -> (nub defs, nub uses)) -- Combine rules
+  , \ident cmds -> (ident : concatMap fst cmds, concatMap snd cmds) -- Rule
+  , ([], []) -- Go
+  , ([], []) -- Take
+  , ([], []) -- Mark
+  , ([], []) -- NothingCmd
+  , const ([], []) -- Turn
+  , \_ cmds -> ([], concatMap snd cmds) -- Case
+  , \ident -> ([], [ident]) -- Invoke
+  , ([], []) -- LeftDir
+  , ([], []) -- RightDir
+  , ([], []) -- FrontDir
+  , \_ cmds -> ([], concatMap snd cmds) -- Alt
+  , ([], []) -- Empty
+  , ([], []) -- Lambda
+  , ([], []) -- Debris
+  , ([], []) -- Asteroid
+  , ([], []) -- Boundary
+  , ([], []) -- Wildcard
+  )
 
-collectUsedRules :: Program -> [Ident2]
-collectUsedRules = foldProgram usedRulesAlg
+hasStartRuleAlgebra :: Algebra Bool
+hasStartRuleAlgebra =
+  (or, -- Combine rules
+   \ident _ -> ident == "start", -- Rule
+   False, -- Go
+   False, -- Take
+   False, -- Mark
+   False, -- NothingCmd
+   const False, -- Turn
+   const (const False), -- Case
+   const False, -- Invoke
+   False, -- LeftDir
+   False, -- RightDir
+   False, -- FrontDir
+   const (const False), -- Alt
+   False, -- Empty
+   False, -- Lambda
+   False, -- Debris
+   False, -- Asteroid
+   False, -- Boundary
+   False -- Wildcard
+  )
 
-usedRulesAlg :: ProgramAlg [Ident2]
-usedRulesAlg = ProgramAlg
-  { algRule = \_ cmds -> concat cmds
-  , algCommand = \cmd -> case cmd of
-      ComIdent ident -> [ident]
-      ComCase _ alts -> concat alts
-      _              -> []
-  , algDirection = const []
-  , algAlt = \_ cmds -> concat cmds
-  , algPattern = const []
-  }
+noDuplicateRulesAlgebra :: Algebra [Ident2]
+noDuplicateRulesAlgebra =
+  (concat, -- Combine rules
+   \ident _ -> [ident], -- Rule
+   [], -- Go
+   [], -- Take
+   [], -- Mark
+   [], -- NothingCmd
+   const [], -- Turn
+   const (const []), -- Case
+   const [], -- Invoke
+   [], -- LeftDir
+   [], -- RightDir
+   [], -- FrontDir
+   const (const []), -- Alt
+   [], -- Empty
+   [], -- Lambda
+   [], -- Debris
+   [], -- Asteroid
+   [], -- Boundary
+   [] -- Wildcard
+  )
 
--- 2. Check if the program contains a "start" rule
-hasStartRule :: Program -> Bool
-hasStartRule program = "start" `elem` map (\(Rule ident _) -> ident) program
-
--- 3. Check for duplicate rule definitions
-noDuplicateRules :: Program -> Bool
-noDuplicateRules program =
-  let ruleNames = map (\(Rule ident _) -> ident) program
-   in length ruleNames == length (nub ruleNames)
-
--- 4. Check that all cases are exhaustive
-allCasesExhaustive :: Program -> Bool
-allCasesExhaustive = all isCaseExhaustive . collectCases
-
-collectCases :: Program -> [Command]
-collectCases = foldProgram caseCollectorAlg
-
-caseCollectorAlg :: ProgramAlg [Command]
-caseCollectorAlg = ProgramAlg
-  { algRule = \_ cmds -> concat cmds
-  , algCommand = \cmd -> case cmd of
-      ComCase _ alts -> [ComCase undefined alts]
-      _              -> []
-  , algDirection = const []
-  , algAlt = \_ cmds -> concat cmds
-  , algPattern = const []
-  }
-
-isCaseExhaustive :: Command -> Bool
-isCaseExhaustive (ComCase _ alts) =
-  let patterns = map (\(Alt pat _) -> pat) alts
-   in PatWildcard `elem` patterns || all (`elem` patterns) [PatEmpty, PatLambda, PatDebris, PatAsteroid, PatBoundary]
-isCaseExhaustive _ = True
+allCasesExhaustiveAlgebra :: Algebra Bool
+allCasesExhaustiveAlgebra =
+  (and -- Combine rules
+  , const and, -- Rule
+   True, -- Go
+   True, -- Take
+   True, -- Mark
+   True, -- NothingCmd
+   const True, -- Turn
+   \_ alts -> any (== PatWildcard) (map fst alts) || -- Case: catch-all
+               all (`elem` map fst alts) [PatEmpty, PatLambda, PatDebris, PatAsteroid, PatBoundary], -- All patterns
+   const True, -- Invoke
+   True, -- LeftDir
+   True, -- RightDir
+   True, -- FrontDir
+   const (const True), -- Alt
+   True, -- Empty
+   True, -- Lambda
+   True, -- Debris
+   True, -- Asteroid
+   True, -- Boundary
+  )
