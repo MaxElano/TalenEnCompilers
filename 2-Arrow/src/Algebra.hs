@@ -1,125 +1,107 @@
 module Algebra where
 
 import Model
-
-import Data.Set (Set)
-import qualified Data.Set as Set
+import Data.List (nub, (\\))
 
 
 -- Exercise 5
-type Algebra r = 
-    ( [r] -> r --Rules to program
-    , Ident2 -> [r] -> r --Ident with commands to rule
-    , Command -> r
-    , Direction -> r 
-    , Pattern -> r 
-    , (Pattern, [r]) -> r
-    )
+data ProgramAlg r = ProgramAlg
+  { algRule :: Ident2 -> [r] -> r -- Handles a rule
+  , algCommand :: Command -> r    -- Handles a command
+  , algDirection :: Direction -> r -- Handles a direction
+  , algAlt :: Pattern -> [r] -> r -- Handles an alternative
+  , algPattern :: Pattern -> r    -- Handles a pattern
+  }
 
-fold :: Algebra r -> Program -> r
-fold (proAlgebra, rulAlgebra, comAlgebra, dirAlgebra, patAlgebra, altAlgebra) = setProgram
-  where
-    setProgram :: Program -> r
-    setProgram = proAlgebra . map setRule
+-- Fold function for the program
+foldProgram :: ProgramAlg r -> Program -> [r]
+foldProgram alg = map (foldRule alg)
 
-    setRule :: Rule -> r
-    setRule (Rule ident commands) = rulAlgebra ident (map setCommand commands)
+foldRule :: ProgramAlg r -> Rule -> r
+foldRule alg (Rule ident cmds) = algRule alg ident (map (foldCommand alg) cmds)
 
-    setCommand :: Command -> r
-    setCommand ComGo          = comAlgebra ComGo
-    setCommand ComTake        = comAlgebra ComTake
-    setCommand ComMark        = comAlgebra ComMark
-    setCommand ComNothing     = comAlgebra ComNothing
-    setCommand (ComTurn d)    = comAlgebra (ComTurn d)
-    setCommand (ComCase d alts) = comAlgebra (ComCase (dirAlgebra d) (map setAlt alts))
-    setCommand (ComIdent text) = comAlgebra (ComIdent text)
+foldCommand :: ProgramAlg r -> Command -> r
+foldCommand alg cmd = case cmd of
+  ComGo            -> algCommand alg ComGo
+  ComTake          -> algCommand alg ComTake
+  ComMark          -> algCommand alg ComMark
+  ComNothing       -> algCommand alg ComNothing
+  ComTurn dir      -> algCommand alg (ComTurn (foldDirection alg dir))
+  ComCase dir alts -> algCommand alg (ComCase (foldDirection alg dir) (map (foldAlt alg) alts))
+  ComIdent ident   -> algCommand alg (ComIdent ident)
 
-    setAlt :: Alt -> r
-    setAlt (Alt pattern commands) = altAlgebra (pattern, map setCommand commands)
+foldDirection :: ProgramAlg r -> Direction -> r
+foldDirection alg dir = algDirection alg dir
+
+foldAlt :: ProgramAlg r -> Alt -> r
+foldAlt alg (Alt pat cmds) = algAlt alg (foldPattern alg pat) (map (foldCommand alg) cmds)
+
+foldPattern :: ProgramAlg r -> Pattern -> r
+foldPattern alg pat = algPattern alg pat
+
 
 
 -- Exercise 6
-
 checkProgram :: Program -> Bool
-checkProgram program =
-  let result = foldAnalysis checkAlgebra program
-  in  "start" `Set.member` definedRules result
-      && Set.isSubsetOf (calledRules result) (definedRules result)
-      && not (hasDuplicates result)
-      && not (hasMissingCatchAll result)
+checkProgram program = and
+  [ noUndefinedRules program
+  , hasStartRule program
+  , noDuplicateRules program
+  , allCasesExhaustive program
+  ]
 
-data CheckResult = CheckResult
-  { definedRules :: Set String  
-  , calledRules  :: Set String  
-  , hasDuplicates :: Bool       
-  , hasMissingCatchAll :: Bool  
+-- 1. Check for undefined rules
+noUndefinedRules :: Program -> Bool
+noUndefinedRules program =
+  let definedRules = map (\(Rule ident _) -> ident) program
+      usedRules = collectUsedRules program
+   in null (usedRules \\ definedRules) -- All used rules must be defined
+
+collectUsedRules :: Program -> [Ident2]
+collectUsedRules = foldProgram usedRulesAlg
+
+usedRulesAlg :: ProgramAlg [Ident2]
+usedRulesAlg = ProgramAlg
+  { algRule = \_ cmds -> concat cmds
+  , algCommand = \cmd -> case cmd of
+      ComIdent ident -> [ident]
+      ComCase _ alts -> concat alts
+      _              -> []
+  , algDirection = const []
+  , algAlt = \_ cmds -> concat cmds
+  , algPattern = const []
   }
-  deriving (Show, Eq)
 
-initialResult :: CheckResult
-initialResult = CheckResult Set.empty Set.empty False False
+-- 2. Check if the program contains a "start" rule
+hasStartRule :: Program -> Bool
+hasStartRule program = "start" `elem` map (\(Rule ident _) -> ident) program
 
-type CheckAlgebra = 
-  ( Set Ident2 -> CheckResult -> CheckResult 
-  , Ident2 -> [CheckResult] -> CheckResult   
-  , Command -> CheckResult                   
-  , Direction -> CheckResult                 
-  , Pattern -> Bool                          
-  , (Bool, [CheckResult]) -> CheckResult     
-  )
+-- 3. Check for duplicate rule definitions
+noDuplicateRules :: Program -> Bool
+noDuplicateRules program =
+  let ruleNames = map (\(Rule ident _) -> ident) program
+   in length ruleNames == length (nub ruleNames)
 
-foldAnalysis :: CheckAlgebra -> Program -> CheckResult
-foldAnalysis (combineRules, checkRule, checkCommand, _, checkPattern, checkAlt) program =
-  foldr combineRules initialResult (map checkRule' program)
-  where
-    checkRule' (Rule name commands) =
-      let ruleResult = checkRule name (map checkCommand commands)
-      in ruleResult { definedRules = Set.insert name (definedRules ruleResult) }
+-- 4. Check that all cases are exhaustive
+allCasesExhaustive :: Program -> Bool
+allCasesExhaustive = all isCaseExhaustive . collectCases
 
-    checkCommand :: Command -> CheckResult
-    checkCommand ComGo          = initialResult
-    checkCommand ComTake        = initialResult
-    checkCommand ComMark        = initialResult
-    checkCommand ComNothing     = initialResult
-    checkCommand (ComTurn _)    = initialResult
-    checkCommand (ComCase _ alts) = foldr (\(patternCovered, result) acc -> 
-                                            acc { hasMissingCatchAll = hasMissingCatchAll acc || not patternCovered }
-                                        ) initialResult (map checkAlt' alts)
-    checkCommand (ComIdent name)  = initialResult { calledRules = Set.singleton name }
+collectCases :: Program -> [Command]
+collectCases = foldProgram caseCollectorAlg
 
-    checkAlt' :: Alt -> (Bool, CheckResult)
-    checkAlt' (Alt pat cmds) =
-        let patternCovered = checkPattern pat
-            commandResults = map checkCommand cmds
-        in (patternCovered, foldr combineCheck initialResult commandResults)
+caseCollectorAlg :: ProgramAlg [Command]
+caseCollectorAlg = ProgramAlg
+  { algRule = \_ cmds -> concat cmds
+  , algCommand = \cmd -> case cmd of
+      ComCase _ alts -> [ComCase undefined alts]
+      _              -> []
+  , algDirection = const []
+  , algAlt = \_ cmds -> concat cmds
+  , algPattern = const []
+  }
 
-
-    combineCheck f (patternCovered, results) acc =
-      let altResult = f (patternCovered, results)
-      in acc
-          { hasMissingCatchAll = hasMissingCatchAll acc || hasMissingCatchAll altResult }
-
-checkAlgebra :: CheckAlgebra
-checkAlgebra =
-  ( \ruleSet acc -> acc { definedRules = Set.union ruleSet (definedRules acc) }
-  , \name results ->
-      let duplicates = any (\r -> name `Set.member` definedRules r) results
-      in CheckResult
-           { definedRules = Set.empty
-           , calledRules = foldr Set.union Set.empty (map calledRules results)
-           , hasDuplicates = duplicates || any hasDuplicates results
-           , hasMissingCatchAll = any hasMissingCatchAll results
-           }
-  , \command -> case command of
-      ComIdent name -> initialResult { calledRules = Set.singleton name }
-      ComCase _ alts -> foldr (\(patternCovered, _) acc -> acc || not patternCovered) False alts
-      _ -> initialResult
-  , \_ -> initialResult -- Noop for directions
-  , \pattern -> case pattern of
-      PatWildcard -> True
-      _           -> False
-  , \(patternCovered, results) ->
-      let hasWildcard = patternCovered
-          subResults = foldr (\r acc -> acc || hasMissingCatchAll r) False results
-      in initialResult { hasMissingCatchAll = not hasWildcard && subResults }
-  )
+isCaseExhaustive :: Command -> Bool
+isCaseExhaustive (ComCase _ alts) =
+  let patterns = map (\(Alt pat _) -> pat) alts
+   in PatWildcard `elem` patterns || all (`elem` patterns) [PatEmpty, PatLambda, PatDebris, PatAsteroid, PatBoundary]
+isCaseExhaustive _ = True
