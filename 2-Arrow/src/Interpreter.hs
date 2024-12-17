@@ -90,7 +90,11 @@ data Step =  Done  Space Pos Heading
 
 -- | Exercise 8
 toEnvironment :: String -> Environment
-toEnvironment = undefined
+toEnvironment s = if check then undefined else undefined
+  where
+    tokens = alexScanTokens s
+    program = parser tokens
+    check = checkProgram program
 
 -- | Exercise 9
 step :: Environment -> ArrowState -> Step
