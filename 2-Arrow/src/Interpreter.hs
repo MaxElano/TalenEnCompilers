@@ -75,9 +75,9 @@ splitSpace n cs = let (splt1,splt2) = splitAt n cs
                   in splt1 : splitSpace n splt2
 
 -- These three should be defined by you
-type Ident = ()
-type Commands = ()
-type Heading = ()
+type Ident = String
+type Commands = [Command]
+type Heading = Direction
 
 type Environment = Map Ident Commands
 
@@ -89,12 +89,12 @@ data Step =  Done  Space Pos Heading
           |  Fail  String
 
 -- | Exercise 8
-toEnvironment :: String -> Environment
-toEnvironment s = if check then undefined else undefined
-  where
-    tokens = alexScanTokens s
-    program = parser tokens
-    check = checkProgram program
+-- toEnvironment :: String -> Environment
+-- toEnvironment s = if check then undefined else undefined
+--   where
+--     tokens = alexScanTokens s
+--     program = parser tokens
+--     --check = checkProgram program
 
 -- | Exercise 9
 step :: Environment -> ArrowState -> Step

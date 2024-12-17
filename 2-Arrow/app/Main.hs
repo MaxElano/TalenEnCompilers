@@ -32,5 +32,5 @@ main = do
   putStrLn "Parsed program:"
   putStrLn ""
   print arr
-  print $ check arr
+  --print $ check arr
 
