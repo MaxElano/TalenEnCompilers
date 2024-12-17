@@ -5,7 +5,8 @@ module Algebra where
 
 
 import Model
-import Data.List (nub, (\\))
+import Data.List (nub)
+import qualified Data.Set as S
 
 
 -- Exercise 5
@@ -47,15 +48,15 @@ foldProgram (programAlg, ruleAlg, cmdGenAlg, cmdTurnAlg, cmdCaseAlg,
 -- Exercise 6
 checkProgram :: Program -> Bool
 checkProgram program =
-  let --(definedRules, usedRules) = foldProgram collectRulesAlgebra program
+  let (definedRules, usedRules) = foldProgram collectRulesAlgebra program
       hasStart = foldProgram hasStartRuleAlgebra program
       allRules = foldProgram noDuplicateRulesAlgebra program
-      --exhaustive = foldProgram allCasesExhaustiveAlgebra program
+      exhaustive = foldProgram allCasesExhaustiveAlgebra program
    in and
-        [ --null (usedRules \\ definedRules) -- No undefined rules
-         hasStart -- "start" rule exists
+        [ null $ filter (`S.notMember` S.fromList definedRules) usedRules -- No undefined rules
+        , hasStart -- "start" rule exists
         , length allRules == length (nub allRules) -- No duplicate rules
-        --, exhaustive -- All cases exhaustive
+        , exhaustive -- All cases exhaustive
         ]
 
 collectRulesAlgebra :: Algebra ([Ident2], [Ident2]) ([Ident2], [Ident2]) ([Ident2], [Ident2]) ([Ident2], [Ident2])
@@ -91,15 +92,14 @@ noDuplicateRulesAlgebra =
    const (const []) -- Alt
   )
 
--- allCasesExhaustiveAlgebra :: Algebra Bool Bool Bool Bool
--- allCasesExhaustiveAlgebra =
---  (and, -- Combine rules
---   const and, -- Rule
---   const True, -- Go, Take, Mark, NothingCmd
---   const True, -- Turn
---   \_ alts -> (any (\(Alt pat _) -> pat == PatWildcard)) || --(map (\(Alt pat _) -> const pat) alts) || -- Case: catch-all
---               (all (\x -> elem x (map (\(Alt pat _) -> pat) alts)) [PatEmpty, PatLambda, PatDebris, PatAsteroid, PatBoundary]),
---               all (`elem` map fst alts) [PatEmpty, PatLambda, PatDebris, PatAsteroid, PatBoundary], -- All patterns
---   const True, -- Invoke
---   const (const True) -- Alt
---  )
+allCasesExhaustiveAlgebra :: Algebra Bool Bool Bool Pattern
+allCasesExhaustiveAlgebra =
+ (and, -- Combine rules
+  const and, -- Rule
+  const True, -- Go, Take, Mark, NothingCmd
+  const True, -- Turn
+  \_ pats -> any (\pat-> pat == PatWildcard) pats || --(map (\(Alt pat _) -> const pat) alts) || -- Case: catch-all
+              all (`elem` pats) [PatEmpty, PatLambda, PatDebris, PatAsteroid, PatBoundary], -- All patterns
+  const True, -- Invoke
+  \p _ -> p -- Alt
+ )

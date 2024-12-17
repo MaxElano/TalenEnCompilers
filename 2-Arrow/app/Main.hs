@@ -6,6 +6,7 @@ import Interpreter
 import Lexer
 import Parser
 
+
 -- Exercise 11
 interactive :: Environment -> ArrowState -> IO ()
 interactive = undefined
@@ -32,5 +33,4 @@ main = do
   putStrLn "Parsed program:"
   putStrLn ""
   print arr
-  --print $ check arr
-
+  print $ checkProgram arr
