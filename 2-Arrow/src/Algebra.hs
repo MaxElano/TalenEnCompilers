@@ -67,12 +67,12 @@ foldProgram (programAlg, ruleAlg, cmdGoAlg, cmdTakeAlg, cmdMarkAlg, cmdNothingAl
 
     goPat :: Pattern -> r
     goPat pat = case pat of
-      PatEmpty     -> patEmptyAlg
-      PatLambda    -> patLambdaAlg
-      PatDebris    -> patDebrisAlg
-      PatAsteroid  -> patAsteroidAlg
-      PatBoundary  -> patBoundaryAlg
-      PatWildcard  -> patWildcardAlg
+      PatEmpty     -> patEmptyAlg PatEmpty
+      PatLambda    -> patLambdaAlg PatLambda
+      PatDebris    -> patDebrisAlg PatDebris
+      PatAsteroid  -> patAsteroidAlg PatAsteroid
+      PatBoundary  -> patBoundaryAlg PatBoundary
+      PatWildcard  -> patWildcardAlg PatWildcard
 
 -- Exercise 6
 checkProgram :: Program -> Bool
@@ -166,8 +166,9 @@ allCasesExhaustiveAlgebra =
    True, -- Mark
    True, -- NothingCmd
    const True, -- Turn
-   \_ alts -> any (== PatWildcard) (map fst alts) || -- Case: catch-all
-               all (`elem` map fst alts) [PatEmpty, PatLambda, PatDebris, PatAsteroid, PatBoundary], -- All patterns
+   \_ alts -> (any (\(Alt pat _) -> pat == PatWildcard)) || --(map (\(Alt pat _) -> const pat) alts) || -- Case: catch-all
+               (all (\x -> elem x (map (\(Alt pat _) -> pat) alts)) [PatEmpty, PatLambda, PatDebris, PatAsteroid, PatBoundary]),
+               --all (`elem` map fst alts) [PatEmpty, PatLambda, PatDebris, PatAsteroid, PatBoundary], -- All patterns
    const True, -- Invoke
    True, -- LeftDir
    True, -- RightDir
@@ -178,4 +179,5 @@ allCasesExhaustiveAlgebra =
    True, -- Debris
    True, -- Asteroid
    True, -- Boundary
+   True  -- WildCard
   )
