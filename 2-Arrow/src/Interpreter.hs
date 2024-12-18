@@ -107,7 +107,7 @@ step env arrow@(ArrowState space pos heading (head:stack)) = case head of
   ComNothing               -> Ok arrow
   (ComTurn direction)      -> Ok $ ArrowState space pos (turnArrow heading direction) stack
   (ComCase direction alts) -> caseArrow (ArrowState space pos heading stack) (getNextPos pos $ turnArrow heading direction) alts
-  (ComIdent ident)         -> maybe (Fail "No rule matched") (\coms -> Ok $ ArrowState space pos heading (coms ++ stack)) $ L.lookup ident env
+  (ComIdent ident)         -> maybe (Fail "No rule matched") (\coms -> Ok $ ArrowState space pos heading (coms ++ stack)) (L.lookup ident env)
 
 moveArrow :: Space -> Pos -> Heading -> Pos
 moveArrow space pos heading =
@@ -115,7 +115,7 @@ moveArrow space pos heading =
   in maybe pos (\c -> if c == Empty || c == Lambda || c == Debris then newPos else pos) $ L.lookup newPos space
 
 takeItem :: Space -> Pos -> Space
-takeItem space pos = maybe space (\c -> if c == Lambda || c == Debris then L.insert pos Empty space else space) $ L.lookup pos space
+takeItem space pos = maybe space (\c -> if c == Lambda || c == Debris then L.insert pos Empty space else space) (L.lookup pos space)
 
 turnArrow :: Heading -> Direction -> Heading
 turnArrow heading DirFront = heading
@@ -124,7 +124,7 @@ turnArrow heading DirRight = turnRight heading
 
 caseArrow :: ArrowState -> Pos -> [Alt] -> Step
 caseArrow arrow@(ArrowState space pos heading stack) newPos alts =
-  let content  = M.fromMaybe Boundary $ L.lookup newPos space
+  let content  = M.fromMaybe Boundary (L.lookup newPos space)
   in maybe (Fail "No alternative matched") (\(Alt _ coms) -> Ok $ ArrowState space pos heading (coms ++ stack)) $ find (\(Alt pattern _) -> eqContentPattern content pattern) alts
 
 getNextPos :: Pos -> Heading -> Pos
