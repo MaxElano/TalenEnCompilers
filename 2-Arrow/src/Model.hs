@@ -45,7 +45,8 @@ data Command
     | ComIdent Ident2
     deriving (Show, Eq)
 
-data Direction = DirLeft
+data Direction 
+    = DirLeft
     | DirRight
     | DirFront
     deriving (Show, Eq)

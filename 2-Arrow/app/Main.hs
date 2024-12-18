@@ -5,6 +5,8 @@ import Model
 import Interpreter
 import Lexer
 import Parser
+import ParseLib ( parse )
+import Data.Map
 
 
 -- Exercise 11
@@ -34,3 +36,7 @@ main = do
   putStrLn ""
   print arr
   print $ checkProgram arr
+  spaceString <- readFile "examples/SampleSpace.space"
+  let space = fst . head $ parse parseSpace spaceString
+  putStrLn $ printSpace space
+  print $ toEnvironment chars
