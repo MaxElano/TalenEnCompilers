@@ -13,6 +13,7 @@ import Parser
 import Model
 import Algebra
 import Data.List
+import Data.Maybe as M
 
 
 data Contents  =  Empty | Lambda | Debris | Asteroid | Boundary deriving (Show, Eq)
@@ -20,8 +21,6 @@ data Contents  =  Empty | Lambda | Debris | Asteroid | Boundary deriving (Show, 
 type Size      =  Int
 type Pos       =  (Int, Int)
 type Space     =  Map Pos Contents
-
-
 
 -- | Parses a space file, such as the ones in the examples folder.
 parseSpace :: Parser Char Space
@@ -107,8 +106,8 @@ step env arrow@(ArrowState space pos heading (head:stack)) = case head of
   ComMark                  -> Ok $ ArrowState (L.insert pos Lambda space) pos heading stack
   ComNothing               -> Ok arrow
   (ComTurn direction)      -> Ok $ ArrowState space pos (turnArrow heading direction) stack
-  (ComCase direction alts) -> undefined
-  (ComIdent ident)         -> undefined
+  (ComCase direction alts) -> caseArrow (ArrowState space pos heading stack) (getNextPos pos $ turnArrow heading direction) alts
+  (ComIdent ident)         -> maybe (Fail "No rule matched") (\coms -> Ok $ ArrowState space pos heading (coms ++ stack)) $ L.lookup ident env
 
 moveArrow :: Space -> Pos -> Heading -> Pos
 moveArrow space pos heading =
@@ -123,6 +122,11 @@ turnArrow heading DirFront = heading
 turnArrow heading DirLeft  = turnLeft heading
 turnArrow heading DirRight = turnRight heading
 
+caseArrow :: ArrowState -> Pos -> [Alt] -> Step
+caseArrow arrow@(ArrowState space pos heading stack) newPos alts =
+  let content  = M.fromMaybe Boundary $ L.lookup newPos space
+  in maybe (Fail "No alternative matched") (\(Alt _ coms) -> Ok $ ArrowState space pos heading (coms ++ stack)) $ find (\(Alt pattern _) -> eqContentPattern content pattern) alts
+
 getNextPos :: Pos -> Heading -> Pos
 getNextPos (x,y) North = (x,y-1)
 getNextPos (x,y) East  = (x+1,y)
@@ -131,12 +135,21 @@ getNextPos (x,y) West  = (x-1,y)
 
 turnLeft :: Heading -> Heading
 turnLeft North = West
-turnLeft East = North
+turnLeft East  = North
 turnLeft South = East
-turnLeft West = South
+turnLeft West  = South
 
 turnRight :: Heading -> Heading
 turnRight North = East
-turnRight East = South
+turnRight East  = South
 turnRight South = West
-turnRight West = North
+turnRight West  = North
+
+eqContentPattern :: Contents -> Pattern -> Bool
+eqContentPattern Empty PatEmpty       = True
+eqContentPattern Lambda PatLambda     = True
+eqContentPattern Debris PatDebris     = True
+eqContentPattern Asteroid PatAsteroid = True
+eqContentPattern Boundary PatBoundary = True
+eqContentPattern _ PatWildcard        = True
+eqContentPattern _ _                  = False
