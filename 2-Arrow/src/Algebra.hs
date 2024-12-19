@@ -1,9 +1,4 @@
-
-
 module Algebra where
-
-
-
 import Model
 import Data.List (nub)
 import qualified Data.Set as S

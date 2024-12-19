@@ -1,13 +1,10 @@
 module Interpreter where
 
 import ParseLib
-
 import Data.Map (Map)
 import qualified Data.Map as L
-
 import Data.Char (isSpace)
 import Control.Monad (replicateM)
-
 import Lexer
 import Parser
 import Model

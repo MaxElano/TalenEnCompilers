@@ -1,5 +1,6 @@
 module Model where
 
+
 -- Exercise 1
 data Token = Token
   | TokArrow         
