@@ -11,13 +11,13 @@ import qualified Data.Set as S
 
 -- Exercise 5
 type Algebra pr r c a =
-  ( [r] -> pr             -- programAlg: Combine rules into a program
-  , Ident2 -> [c] -> r    -- ruleAlg: Combine an identifier and commands into a rule
+  ( [r] -> pr             -- programAlg
+  , Ident2 -> [c] -> r    -- ruleAlg
   , Command -> c          -- "nothing", "mark", "take, "go" command
-  , Direction -> c                -- cmdTurnAlg: Represents the "turn" command
-  , Direction -> [a] -> c         -- cmdCaseAlg: Represents the "case" command
-  , Ident2 -> c           -- cmdIdentAlg: Represents an identifier invocation
-  , Pattern -> [c] -> a         -- altAlg: Represents a pattern and commands
+  , Direction -> c        -- cmdTurnAlg
+  , Direction -> [a] -> c -- cmdCaseAlg
+  , Ident2 -> c           -- cmdIdentAlg
+  , Pattern -> [c] -> a   -- altAlg
   )
 
 -- Fold function for the program
@@ -98,7 +98,7 @@ allCasesExhaustiveAlgebra =
   const and, -- Rule
   const True, -- Go, Take, Mark, NothingCmd
   const True, -- Turn
-  \_ pats -> any (\pat-> pat == PatWildcard) pats || --(map (\(Alt pat _) -> const pat) alts) || -- Case: catch-all
+  \_ pats -> any (\pat-> pat == PatWildcard) pats || --Wildcard in use
               all (`elem` pats) [PatEmpty, PatLambda, PatDebris, PatAsteroid, PatBoundary], -- All patterns
   const True, -- Invoke
   \p _ -> p -- Alt

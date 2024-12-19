@@ -32,4 +32,4 @@ tokens :-
   "Asteroid"    { \s -> TokAsteroid }
   "Boundary"    { \s -> TokBoundary }
   [a-zA-Z0-9\+\-]+ { \s -> TokIdent s }
-  .                  { \s -> error $ "Invalid character: " ++ [head s] }
+  .             { \s -> error $ "Invalid character: " ++ [head s] }
