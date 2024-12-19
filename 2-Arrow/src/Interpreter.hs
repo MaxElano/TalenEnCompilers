@@ -56,9 +56,9 @@ printSpace :: Space -> String
 printSpace space = concatMap printSpaceLine cs
   where
     spaceKeys = L.keys space
-    (_,width) = spaceKeys !! (length spaceKeys - 1)
+    (_,width) = fst $  L.findMax space -- Finds the width of a row in the space
     spaceValues = L.elems space
-    cs = splitSpace (width+1) spaceValues
+    cs = splitSpace (width+1) spaceValues -- Returns a list of lists which contains the contents of each row respectively
 
 printSpaceLine :: [Contents] -> String
 printSpaceLine space = concatMap handleChar space ++ "\r\n"
@@ -75,7 +75,7 @@ type Ident = String
 type Commands = [Command]
 type Heading = Orientation
 
-data Orientation = North | East | South | West deriving (Show, Eq)
+data Orientation = North | East | South | West deriving Show
 
 type Environment = Map Ident Commands
 
@@ -95,19 +95,19 @@ toEnvironment s = if check then L.fromList $ preProcessProgram program else L.em
     check = checkProgram program
 
 preProcessProgram :: Program -> [(Ident,Commands)]
-preProcessProgram = map (\(Rule a b) -> (a,b))
+preProcessProgram = map (\(Rule a b) -> (a,b)) -- Transforming from rules to pairs makes it easier to turn into a Data.map (dictionary)
 
 -- | Exercise 9
 step :: Environment -> ArrowState -> Step
 step _ (ArrowState space pos heading []) = Done space pos heading
-step env arrow@(ArrowState space pos heading (head:stack)) = case head of
+step env arrow@(ArrowState space pos heading (head:stack)) = case head of -- Correctly reacts to each of the possible types of commands, often using a seperate function defined below
   ComGo                    -> Ok $ ArrowState space (moveArrow space pos heading) heading stack
   ComTake                  -> Ok $ ArrowState (takeItem space pos) pos heading stack
   ComMark                  -> Ok $ ArrowState (L.insert pos Lambda space) pos heading stack
-  ComNothing               -> Ok arrow
+  ComNothing               -> Ok $ ArrowState space pos heading stack
   (ComTurn direction)      -> Ok $ ArrowState space pos (turnArrow heading direction) stack
-  (ComCase direction alts) -> caseArrow (ArrowState space pos heading stack) (getNextPos pos $ turnArrow heading direction) alts
-  (ComIdent ident)         -> maybe (Fail "No rule matched") (\coms -> Ok $ ArrowState space pos heading (coms ++ stack)) (L.lookup ident env)
+  (ComCase direction alts) -> caseArrow (ArrowState space pos heading stack) (getNextPos pos $ turnArrow heading direction) alts 
+  (ComIdent ident)         -> maybe (Fail "Error: No rule matched.") (\coms -> Ok $ ArrowState space pos heading (coms ++ stack)) (L.lookup ident env) -- Returns error state if no ruleset is found using the ident string
 
 moveArrow :: Space -> Pos -> Heading -> Pos
 moveArrow space pos heading =
@@ -124,14 +124,15 @@ turnArrow heading DirRight = turnRight heading
 
 caseArrow :: ArrowState -> Pos -> [Alt] -> Step
 caseArrow arrow@(ArrowState space pos heading stack) newPos alts =
-  let content  = M.fromMaybe Boundary (L.lookup newPos space)
-  in maybe (Fail "No alternative matched") (\(Alt _ coms) -> Ok $ ArrowState space pos heading (coms ++ stack)) $ find (\(Alt pattern _) -> eqContentPattern content pattern) alts
+  let content  = M.fromMaybe Boundary (L.lookup newPos space) -- Assumes it is a boundary if nothing is found
+  in maybe (Fail "Error: No alternative matched.") (\(Alt _ coms) -> Ok $ ArrowState space pos heading (coms ++ stack)) (find (\(Alt pattern _) -> eqContentPattern content pattern) alts) 
+  -- Looks for a match in the alts and if no matches are found returns error state, else returns the arrowstate with new found commands prepended
 
 getNextPos :: Pos -> Heading -> Pos
-getNextPos (x,y) North = (x,y-1)
-getNextPos (x,y) East  = (x+1,y)
-getNextPos (x,y) South = (x,y+1)
-getNextPos (x,y) West  = (x-1,y)
+getNextPos (row,column) North = (row-1,column)
+getNextPos (row,column) East  = (row,column+1)
+getNextPos (row,column) South = (row+1,column)
+getNextPos (row,column) West  = (row,column-1)
 
 turnLeft :: Heading -> Heading
 turnLeft North = West
