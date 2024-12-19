@@ -66,4 +66,4 @@ main = do
   let space = fst . head $ parse parseSpace mazeSpaceString
   let env = toEnvironment findArrowString
   -- This takes quit a while but shows that the program works as intended
-  interactive env (ArrowState space (1,0) South [ComIdent "start"])
+  interactive env (ArrowState space (0,0) South [ComIdent "start"])

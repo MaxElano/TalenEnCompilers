@@ -1,4 +1,4 @@
-{-# LANGUAGE TupleSections #-}
+
 
 module Algebra where
 
@@ -22,7 +22,7 @@ type Algebra pr r c a =
 
 -- Fold function for the program
 foldProgram :: Algebra pr r c a -> Program -> pr
-foldProgram (programAlg, ruleAlg, cmdGenAlg, cmdTurnAlg, cmdCaseAlg, 
+foldProgram (programAlg, ruleAlg, cmdGenAlg, cmdTurnAlg, cmdCaseAlg,
              cmdIdentAlg, altAlg) = goProgram
   where
     --goProgram :: Program -> pr
@@ -53,7 +53,7 @@ checkProgram program =
       allRules = foldProgram noDuplicateRulesAlgebra program
       exhaustive = foldProgram allCasesExhaustiveAlgebra program
    in and
-        [ null $ filter (`S.notMember` S.fromList definedRules) usedRules -- No undefined rules
+        [ not (any (`S.notMember` S.fromList definedRules) usedRules) -- No undefined rules
         , hasStart -- "start" rule exists
         , length allRules == length (nub allRules) -- No duplicate rules
         , exhaustive -- All cases exhaustive
@@ -61,7 +61,7 @@ checkProgram program =
 
 collectRulesAlgebra :: Algebra ([Ident2], [Ident2]) ([Ident2], [Ident2]) ([Ident2], [Ident2]) ([Ident2], [Ident2])
 collectRulesAlgebra =
- ( \xs -> foldl (\(defsnew, usesnew) (defsxs, usexs) -> (defsnew ++ defsxs, usesnew ++ usexs)) ([], []) (map (\(defs, uses) -> (nub defs, nub uses)) xs) -- Combine rules
+ ( foldl (\(defsnew, usesnew) (defsxs, usexs) -> (defsnew ++ defsxs, usesnew ++ usexs)) ([], []) . map (\(defs, uses) -> (nub defs, nub uses)) -- Combine rules
  , \ident cmds -> (ident : concatMap fst cmds, concatMap snd cmds) -- Rule
  , const ([], []) -- Go, Take, Mark, NothingCmd
  , const ([], []) -- Turn
@@ -98,8 +98,8 @@ allCasesExhaustiveAlgebra =
   const and, -- Rule
   const True, -- Go, Take, Mark, NothingCmd
   const True, -- Turn
-  \_ pats -> any (\pat-> pat == PatWildcard) pats || --Wildcard in use
+  \_ pats -> elem PatWildcard pats || --Wildcard in use
               all (`elem` pats) [PatEmpty, PatLambda, PatDebris, PatAsteroid, PatBoundary], -- All patterns
   const True, -- Invoke
-  \p _ -> p -- Alt
+  const -- Alt
  )
