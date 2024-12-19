@@ -62,4 +62,3 @@ data Pattern = PatEmpty
     | PatBoundary 
     | PatWildcard
     deriving (Show, Eq)
-
