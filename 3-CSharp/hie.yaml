@@ -1,0 +1,4 @@
+# This file is used for IDE integration
+# (specifcally, it tells the hls to read the .cabal file)
+cradle:
+  cabal:
