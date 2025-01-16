@@ -1,3 +1,6 @@
+--Names:
+--Max Ferket 7337248
+--Daniël van der Hoeven 5041503
 module Main where
 
 import CSharp.Algebra
