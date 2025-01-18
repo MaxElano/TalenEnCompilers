@@ -121,7 +121,7 @@ data Token  -- What the lexer returns
 lexicalScanner :: Parser Char [Token]
 lexicalScanner = skipExtras *> greedy (lexToken <* skipExtras) <* eof
   where
-    skipExtras = lexWhiteSpace <|> lexComment
+    skipExtras = greedy (lexWhiteSpace <* optional lexComment)
 
 lexToken :: Parser Char Token
 lexToken = greedyChoice
@@ -151,10 +151,10 @@ lexIdent :: Parser Char Ident
 lexIdent = greedy (satisfy isAlphaNum)
 
 lexWhiteSpace :: Parser Char String
-lexWhiteSpace = greedy (satisfy isSpace)
+lexWhiteSpace = greedy1 (satisfy isSpace)
 
 lexComment :: Parser Char String
-lexComment = token "//" *> greedy (satisfy (/= '\n')) <* (token "\n" <|> pure "")
+lexComment = token "//" *> greedy (satisfy (/= '\n'))
 
 greedyChoice :: [Parser s a] -> Parser s a
 greedyChoice = foldr (<<|>) empty
