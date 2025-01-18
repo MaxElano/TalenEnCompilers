@@ -21,7 +21,7 @@ It is made and maintained by an ex-student over at https://github.com/J00LZ/ssmr
     * <https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/operators/>
     * <https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/language-specification/expressions>
 
-3. (0.5pt)
+3. (0.5pt) Done: Max
     In the lexer, discard C# single-line comments.
 
 4. (0.5 pt)
