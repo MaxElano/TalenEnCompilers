@@ -255,6 +255,7 @@ precedenceTable =
 
 parseWithPrecedence :: [[Operator]] -> Parser Token Expr -> Parser Token Expr
 parseWithPrecedence []         baseParser = baseParser
+parseWithPrecedence ([OpAsg]:rest) baseParser = chainr (parseWithPrecedence rest baseParser) (ExprOper <$> parseOperator [OpAsg])
 parseWithPrecedence (ops:rest) baseParser = chainl (parseWithPrecedence rest baseParser) (ExprOper <$> parseOperator ops)
 
 parseOperator :: [Operator] -> Parser Token Operator

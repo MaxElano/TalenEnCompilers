@@ -1,11 +1,5 @@
 class Hello {
     void main() {        
-        3 + 5 / 2;
-        //C
+        3 = 5 = 2;
     }
 }
-// This is a comment
-
-// COMMENT
-
-//C
