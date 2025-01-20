@@ -238,19 +238,15 @@ pExprSimple =  ExprLit  <$> pLiteral
            <|> ExprVar  <$> sLowerId
            <|> parenthesised pExpr
 
---pExpr :: Parser Token Expr
---pExpr = chainr pExprSimple (ExprOper <$> sOperator)
-
--- Parse expressions with precedence levels
 pExpr :: Parser Token Expr
 pExpr = parseWithPrecedence precedenceTable pExprSimple
 
--- Precedence levels for operators (from highest to lowest)
 precedenceTable :: [[Operator]]
 precedenceTable =
   [ [OpAsg]                                  -- Assignment
-  , [OpOr, OpXor]                            -- Logical OR, XOR
-  , [OpAnd]                                  -- Logical AND
+  , [OpOr]                                   -- OR, 
+  , [OpAnd]                                  -- AND
+  , [OpXor]                                  -- XOR
   , [OpEq, OpNeq]                            -- Equality
   , [OpLeq, OpLt, OpGeq, OpGt]               -- Relational
   , [OpAdd, OpSub]                           -- Additive
