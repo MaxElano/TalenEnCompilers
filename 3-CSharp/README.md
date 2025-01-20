@@ -24,7 +24,7 @@ It is made and maintained by an ex-student over at https://github.com/J00LZ/ssmr
 3. (0.5pt) Done: Max
     In the lexer, discard C# single-line comments.
 
-4. (0.5 pt) Done: Max
+4. (0.5 pt) Done: Max --Note: Assumed only '=' had to be right-associative
     Make the parser handle both left-associative and right-associative operators.
   
     Again, use the official language reference to determine what the assocativity of each operator should be!
