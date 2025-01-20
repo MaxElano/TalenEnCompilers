@@ -238,8 +238,33 @@ pExprSimple =  ExprLit  <$> pLiteral
            <|> ExprVar  <$> sLowerId
            <|> parenthesised pExpr
 
+--pExpr :: Parser Token Expr
+--pExpr = chainr pExprSimple (ExprOper <$> sOperator)
+
+-- Parse expressions with precedence levels
 pExpr :: Parser Token Expr
-pExpr = chainr pExprSimple (ExprOper <$> sOperator)
+pExpr = parseWithPrecedence precedenceTable pExprSimple
+
+-- Precedence levels for operators (from highest to lowest)
+precedenceTable :: [[Operator]]
+precedenceTable =
+  [ [OpAsg]                                  -- Assignment
+  , [OpOr, OpXor]                            -- Logical OR, XOR
+  , [OpAnd]                                  -- Logical AND
+  , [OpEq, OpNeq]                            -- Equality
+  , [OpLeq, OpLt, OpGeq, OpGt]               -- Relational
+  , [OpAdd, OpSub]                           -- Additive
+  , [OpMul, OpDiv, OpMod]                    -- Multiplicative
+  ]
+
+parseWithPrecedence :: [[Operator]] -> Parser Token Expr -> Parser Token Expr
+parseWithPrecedence []         baseParser = baseParser
+parseWithPrecedence (ops:rest) baseParser = chainl (parseWithPrecedence rest baseParser) (ExprOper <$> parseOperator ops)
+
+parseOperator :: [Operator] -> Parser Token Operator
+parseOperator ops = anySymbol >>= \case
+  Operator x -> if x `elem` ops then pure x else failp
+  _ -> failp
 
 pDecl :: Parser Token Decl
 pDecl = Decl <$> pRetType <*> sLowerId

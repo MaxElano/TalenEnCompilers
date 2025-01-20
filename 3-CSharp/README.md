@@ -14,7 +14,7 @@ It is made and maintained by an ex-student over at https://github.com/J00LZ/ssmr
 1. (0 pt)
     Get familiar with the features the compilers already supports, and the testing framework.
 
-2. (1 pt)
+2. (1 pt) Done (Not Fully Tested): Max
     Fix the priorities of the operators. In the starting framework, all
     operators have the same priority. Use the official C# reference to determine the correct order of operations:
 
