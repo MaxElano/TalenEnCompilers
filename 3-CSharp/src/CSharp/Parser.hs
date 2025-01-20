@@ -25,6 +25,9 @@ Stat ::= Expr ;
        | while ( Expr ) Stat
        | return Expr ;
        | Block
+       | For ( Exprdecls? ; Expr ; Exprdecls? ) Stat
+Exprdecls ::= Exprdecl | Exprdecl , Exprdecls
+Exprdecl  ::= Expr | Decl
 Else ::= else Stat
 Typevoid ::= Type | void
 Type ::= int | bool
@@ -254,9 +257,9 @@ precedenceTable =
   ]
 
 parseWithPrecedence :: [[Operator]] -> Parser Token Expr -> Parser Token Expr
-parseWithPrecedence []         baseParser = baseParser
-parseWithPrecedence ([OpAsg]:rest) baseParser = chainr (parseWithPrecedence rest baseParser) (ExprOper <$> parseOperator [OpAsg])
-parseWithPrecedence (ops:rest) baseParser = chainl (parseWithPrecedence rest baseParser) (ExprOper <$> parseOperator ops)
+parseWithPrecedence []             baseParser = baseParser
+parseWithPrecedence ([OpAsg]:rest) baseParser = chainr (parseWithPrecedence rest baseParser) (ExprOper <$> parseOperator [OpAsg]) -- Right-associative
+parseWithPrecedence (ops:rest)     baseParser = chainl (parseWithPrecedence rest baseParser) (ExprOper <$> parseOperator ops) -- Left-associative
 
 parseOperator :: [Operator] -> Parser Token Operator
 parseOperator ops = anySymbol >>= \case
