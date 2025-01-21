@@ -1,5 +1,7 @@
 class Hello {
     void main() {        
-        3 = 5 = 2;
+        for(int i, i = 0; i < 5; i = i + 1){
+            1 + 1;
+        }
     }
 }

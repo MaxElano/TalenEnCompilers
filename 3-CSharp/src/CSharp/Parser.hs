@@ -71,6 +71,7 @@ printKeyword = \case
   ; KeyWhile -> "while";  KeyReturn -> "return"
   ; KeyTry   -> "try";    KeyCatch  -> "catch"
   ; KeyClass -> "class";  KeyVoid   -> "void"
+  ; KeyFor   -> "for"
   }
 
 -- Concrete syntax of C# punctuation
@@ -96,6 +97,7 @@ data Keyword
   | KeyWhile | KeyReturn
   | KeyTry   | KeyCatch
   | KeyClass | KeyVoid
+  | KeyFor
   deriving (Eq, Show, Ord, Enum, Bounded)
 
 data Punctuation
@@ -229,8 +231,19 @@ pStat =  StatExpr <$> pExpr <*  sSemi
      <|> StatIf     <$ keyword KeyIf     <*> parenthesised pExpr <*> pStat <*> optionalElse
      <|> StatWhile  <$ keyword KeyWhile  <*> parenthesised pExpr <*> pStat
      <|> StatReturn <$ keyword KeyReturn <*> pExpr               <*  sSemi
+     <|> pForToWhile <$ keyword KeyFor   <*> pack (punctuation POpen) pExprDecls sSemi <*> (pExpr <* sSemi) <*> pExprDecls <* (punctuation PClose) *> pBlock
      <|> pBlock
      where optionalElse = option (keyword KeyElse *> pStat) (StatBlock [])
+
+pForToWhile :: [Stat] -> Expr -> [Stat] -> Stat -> Stat
+pForToWhile init cond inc (StatBlock body) = StatBlock (init ++ [StatWhile cond (StatBlock $ body ++ inc)])    -- init, while (cond) { body; inc }
+
+pExprDecls :: Parser Token [Stat]
+pExprDecls = greedy (optional (punctuation Comma) *> pExprDecl)
+
+pExprDecl :: Parser Token Stat
+pExprDecl =  StatDecl <$> pDecl
+         <|> StatExpr <$> pExpr
 
 pLiteral :: Parser Token Literal
 pLiteral =  LitBool <$> sBoolLit
