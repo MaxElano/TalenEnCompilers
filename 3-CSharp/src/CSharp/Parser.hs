@@ -44,6 +44,7 @@ import ParseLib hiding (braced, bracketed, parenthesised)
 import Control.Applicative
 import Data.Char
 import Data.Maybe
+import Debug.Trace
 
 ---- Begin Pretty-printing functions for C# syntax ----
 
@@ -227,19 +228,20 @@ pStatDecl =  pStat
          <|> StatDecl <$> pDeclSemi
 
 pStat :: Parser Token Stat
-pStat =  StatExpr <$> pExpr <*  sSemi
+pStat =  StatExpr <$> pExpr <* sSemi
      <|> StatIf     <$ keyword KeyIf     <*> parenthesised pExpr <*> pStat <*> optionalElse
      <|> StatWhile  <$ keyword KeyWhile  <*> parenthesised pExpr <*> pStat
      <|> StatReturn <$ keyword KeyReturn <*> pExpr               <*  sSemi
-     <|> pForToWhile <$ keyword KeyFor   <*> pack (punctuation POpen) pExprDecls sSemi <*> (pExpr <* sSemi) <*> pExprDecls <* (punctuation PClose) *> pBlock
+     <|> (pForToWhile <$ keyword KeyFor) <*> pack (punctuation POpen) pExprDecls sSemi <*> (pExpr <* sSemi) <*> (pExprDecls <* (punctuation PClose)) <*> pStat
      <|> pBlock
      where optionalElse = option (keyword KeyElse *> pStat) (StatBlock [])
 
 pForToWhile :: [Stat] -> Expr -> [Stat] -> Stat -> Stat
-pForToWhile init cond inc (StatBlock body) = StatBlock (init ++ [StatWhile cond (StatBlock $ body ++ inc)])    -- init, while (cond) { body; inc }
+pForToWhile init cond inc (StatBlock body) = StatBlock (init ++ [StatWhile cond (StatBlock $  body  ++ inc)])    -- init, while (cond) { body; inc }
+pForToWhile init cond inc body             = StatBlock (init ++ [StatWhile cond (StatBlock $ [body] ++ inc)])
 
 pExprDecls :: Parser Token [Stat]
-pExprDecls = greedy (optional (punctuation Comma) *> pExprDecl)
+pExprDecls = greedy (pExprDecl <* optional (punctuation Comma))
 
 pExprDecl :: Parser Token Stat
 pExprDecl =  StatDecl <$> pDecl
