@@ -34,7 +34,7 @@ It is made and maintained by an ex-student over at https://github.com/J00LZ/ssmr
     * `a = b = 1` should be parsed as `a = (b = 1)` (right-associative)
     * `a + b + c` should be parsed as `(a + b) + c` (left-associative)
 
-5. (1 pt) Done: Max (testen met code generation)
+5. (1 pt) Done: Max (Nog testen met code generation)
     Extend the compiler to support a `for` statement.
     In particular, we extend the grammar as such:
 
@@ -56,7 +56,7 @@ It is made and maintained by an ex-student over at https://github.com/J00LZ/ssmr
     Hint: you may find generating code for `for` loops easier if you first translate
     their abstract syntax to use `while` loops (this is called 'desugaring').
 
-6. (2 pt)
+6. (2 pt) Dunno if done?? Max (checken bij werkcollege of het idd zo goed is want weet niet hoe ik kan testen zonder dat algebra gemaakt is)
     Adapt the code generator such that the declared local variables can be used.
 
     Hint: you should change the result type for statements in the algebra to be a *pair* of two things:
