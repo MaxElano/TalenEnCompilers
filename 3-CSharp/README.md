@@ -34,7 +34,7 @@ It is made and maintained by an ex-student over at https://github.com/J00LZ/ssmr
     * `a = b = 1` should be parsed as `a = (b = 1)` (right-associative)
     * `a + b + c` should be parsed as `(a + b) + c` (left-associative)
 
-5. (1 pt) Done: Max
+5. (1 pt) Done: Max (testen met code generation)
     Extend the compiler to support a `for` statement.
     In particular, we extend the grammar as such:
 
