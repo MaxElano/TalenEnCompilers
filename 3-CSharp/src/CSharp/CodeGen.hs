@@ -14,11 +14,10 @@ import qualified Data.Map as M
 
 -- The types that we generate for each datatype: our type variables for the algebra.
 -- Change these definitions instead of the function signatures to get better type errors.
-type C = Code                   -- Class
-type M = Code                   -- Member
-type S = Code                   -- Statement
-type E = ValueOrAddress -> Code -- Expression
-
+type C = Env -> (Code, Env)                   -- Class
+type M = Env -> (Code, Env)                   -- Member
+type S = Env -> (Code, Env)                   -- Statement
+type E = Env -> ValueOrAddress -> Code -- Expression
 
 codeAlgebra :: CSharpAlgebra C M S E
 codeAlgebra = CSharpAlgebra
@@ -36,51 +35,58 @@ codeAlgebra = CSharpAlgebra
   fExprOp
 
 fClass :: ClassName -> [M] -> C
-fClass c ms = [Bsr "main", HALT] ++ concat ms
+fClass c ms = (\env -> ([Bsr "main", HALT] ++ concat ms, env))
 
 fMembDecl :: Decl -> M
-fMembDecl d = []
+fMembDecl d = (\env -> ([], env ++ [d]))
 
 fMembMeth :: RetType -> Ident -> [Decl] -> S -> M
-fMembMeth t x ps s = [LABEL x] ++ s ++ [RET]
+fMembMeth t x ps s = (\env -> ([LABEL x] ++ s ++ [RET], env))
 
 fStatDecl :: Decl -> S
-fStatDecl d = []
+fStatDecl d = (\env -> ([], env ++ [d]))
 
 fStatExpr :: E -> S
-fStatExpr e = e Value ++ [pop]
+fStatExpr e = (\env -> (e Value ++ [pop]))
 
 fStatIf :: E -> S -> S -> S
-fStatIf e s1 s2 = c ++ [BRF (n1 + 2)] ++ s1 ++ [BRA n2] ++ s2 where
+fStatIf e s1 s2 = (\env -> (c ++ [BRF (n1 + 2)] ++ s1 ++ [BRA n2] ++ s2, env)) where
   c        = e Value
   (n1, n2) = (codeSize s1, codeSize s2)
 
 fStatWhile :: E -> S -> S
-fStatWhile e s1 = [BRA n] ++ s1 ++ c ++ [BRT (-(n + k + 2))] where
+fStatWhile e s1 = (\env -> ([BRA n] ++ s1 ++ c ++ [BRT (-(n + k + 2))], env)) where
   c = e Value
   (n, k) = (codeSize s1, codeSize c)
 
 fStatReturn :: E -> S
-fStatReturn e = e Value ++ [pop] ++ [RET]
+fStatReturn e = (\env -> (e Value ++ [pop] ++ [RET], env))
+
+--fStatBlock :: [S] -> S
+--fStatBlock s = (\env -> (concat s, env))
 
 fStatBlock :: [S] -> S
-fStatBlock = concat
+fStatBlock ss = foldl (\(code, env) s -> (code ++ fst (s env), snd (s env))) envOr ss
+--TO-DO: Deze statement nog checken maar zou wel aardig moeten kloppen denk ik
 
 fExprLit :: Literal -> E
-fExprLit l va  = [LDC n] where
+fExprLit l va = (\env -> [LDC n]) where
   n = case l of
     LitInt n -> n
     LitBool b -> bool2int b
 
 fExprVar :: Ident -> E
-fExprVar x va = case va of
+fExprVar x va = (\env -> case va of
     Value   ->  [LDL  loc]
-    Address ->  [LDLA loc]
+    Address ->  [LDLA loc])
   where loc = 42
+--TO-DO: De 42 moet worden opgehaald met x `elem` env, waarin de de variabelen + address moeten staan
+-- Check slides
+
 
 fExprOp :: Operator -> E -> E -> E
-fExprOp OpAsg e1 e2 va = e2 Value ++ [LDS 0] ++ e1 Address ++ [STA 0]
-fExprOp op    e1 e2 va = e1 Value ++ e2 Value ++ [
+fExprOp OpAsg e1 e2 va = (\env -> e2 Value ++ [LDS 0] ++ e1 Address ++ [STA 0], env)
+fExprOp op    e1 e2 va = (\env -> e1 Value ++ e2 Value ++ [
    case op of
     { OpAdd -> ADD; OpSub -> SUB; OpMul -> MUL; OpDiv -> DIV;
     ; OpMod -> MOD
@@ -88,7 +94,7 @@ fExprOp op    e1 e2 va = e1 Value ++ e2 Value ++ [
     ; OpLeq -> LE; OpLt -> LT;
     ; OpGeq -> GT; OpGt -> GT;
     ; OpEq  -> EQ; OpNeq -> NE;}
-  ]
+  ])
 
 -- | Whether we are computing the value of a variable, or a pointer to it
 data ValueOrAddress = Value | Address
