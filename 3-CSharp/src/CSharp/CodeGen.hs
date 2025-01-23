@@ -18,6 +18,7 @@ type C = Env -> (Code, Env)                   -- Class
 type M = Env -> (Code, Env)                   -- Member
 type S = Env -> (Code, Env)                   -- Statement
 type E = Env -> ValueOrAddress -> Code -- Expression
+type Env = [Decl, Address]
 
 codeAlgebra :: CSharpAlgebra C M S E
 codeAlgebra = CSharpAlgebra
@@ -38,13 +39,15 @@ fClass :: ClassName -> [M] -> C
 fClass c ms = (\env -> ([Bsr "main", HALT] ++ concat ms, env))
 
 fMembDecl :: Decl -> M
-fMembDecl d = (\env -> ([], env ++ [d]))
+fMembDecl d = (\env -> ([], [d] ++ env))
 
 fMembMeth :: RetType -> Ident -> [Decl] -> S -> M
 fMembMeth t x ps s = (\env -> ([LABEL x] ++ s ++ [RET], env))
+--Hierna de juiste indexes toevoegen voor elke variabele en lengte vast zetten
+
 
 fStatDecl :: Decl -> S
-fStatDecl d = (\env -> ([], env ++ [d]))
+fStatDecl d = (\env -> ([], [d] ++ env))
 
 fStatExpr :: E -> S
 fStatExpr e = (\env -> (e Value ++ [pop]))
@@ -62,9 +65,6 @@ fStatWhile e s1 = (\env -> ([BRA n] ++ s1 ++ c ++ [BRT (-(n + k + 2))], env)) wh
 fStatReturn :: E -> S
 fStatReturn e = (\env -> (e Value ++ [pop] ++ [RET], env))
 
---fStatBlock :: [S] -> S
---fStatBlock s = (\env -> (concat s, env))
-
 fStatBlock :: [S] -> S
 fStatBlock ss = foldl (\(code, env) s -> (code ++ fst (s env), snd (s env))) envOr ss
 --TO-DO: Deze statement nog checken maar zou wel aardig moeten kloppen denk ik
@@ -77,12 +77,12 @@ fExprLit l va = (\env -> [LDC n]) where
 
 fExprVar :: Ident -> E
 fExprVar x va = (\env -> case va of
-    Value   ->  [LDL  loc]
-    Address ->  [LDLA loc])
-  where loc = 42
---TO-DO: De 42 moet worden opgehaald met x `elem` env, waarin de de variabelen + address moeten staan
--- Check slides
-
+    Value   ->  [LDL  loc env]
+    Address ->  [LDLA loc env])
+  --where loc = 42
+  where loc env = case M.lookup x env of
+          Just loc -> loc
+          Nothing  -> error "Variable not found"
 
 fExprOp :: Operator -> E -> E -> E
 fExprOp OpAsg e1 e2 va = (\env -> e2 Value ++ [LDS 0] ++ e1 Address ++ [STA 0], env)
