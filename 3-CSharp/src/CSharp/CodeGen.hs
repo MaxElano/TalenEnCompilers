@@ -56,34 +56,36 @@ fMembMeth t x ps s = [LABEL x] ++ iniParS ++ fst finCodEnv ++ iniParE ++ [RET]
 -- Fixed parameters until here (except for code in fMembMeth)
 
 fStatDecl :: Decl -> S
-fStatDecl (Decl _ i) = (\env -> ([], [(i, nn env)] ++ env))
+fStatDecl (Decl _ i) = (\env par -> ([], [(i, nn env)] ++ env))
     where
         nn []  = 1
         nn env = (snd (head env)) + 1
 
 fStatExpr :: E -> S
-fStatExpr e = (\env -> (e env Value ++ [pop], env))
+fStatExpr e = (\env par -> (e env par Value ++ [pop], env))
 
 fStatIf :: E -> S -> S -> S
-fStatIf e s1 s2 = (\env -> (c env ++ [BRF (n1 env + 2)] ++ fst (s1 env) ++ [BRA (n2 env)] ++ fst (s2 (fEnv env)), sEnv env)) where
-  c env  = e env Value
-  n1 env = codeSize (fst (s1 env))
-  n2 env = codeSize (fst (s2 env))
-  fEnv env = snd (s1 env)
-  sEnv env = snd (s2 (fEnv env))
+fStatIf e s1 s2 = (\env par -> (c env par ++ [BRF (n1 env par + 2)] ++ fst (s1 env par) ++ [BRA (n2 env par)] ++ fst (s2 (fEnv env par) par), sEnv env par)) where
+  c env par  = e env par Value
+  n1 env par = codeSize (fst (s1 env par))
+  n2 env par = codeSize (fst (s2 env par))
+  fEnv env par = snd (s1 env par)
+  sEnv env par = snd (s2 (fEnv env par) par)
 
 fStatWhile :: E -> S -> S
-fStatWhile e s1 = (\env -> ([BRA (n env)] ++ fst (s1 env) ++ c (fEnv env) ++ [BRT (-(n (fEnv env) + k (fEnv env) + 2))], fEnv env)) where
-  c env = e env Value
-  n env = codeSize (fst (s1 env))
-  k env = codeSize (c env)
-  fEnv env = snd (s1 env)
+fStatWhile e s1 = (\env par -> ([BRA (n env par)] ++ fst (s1 env par) ++ c (fEnv env par) par ++ [BRT (-(n (fEnv env par) par + k (fEnv env par) par + 2))], fEnv env par)) where
+  c env par = e env par Value
+  n env par = codeSize (fst (s1 env par))
+  k env par = codeSize (c env par)
+  fEnv env par= snd (s1 env par)
 
 fStatReturn :: E -> S
-fStatReturn e = (\env -> (e env Value ++ [pop] ++ [RET], env))
+fStatReturn e = (\env par -> (e env par Value ++ [pop] ++ [RET], env))
 
 fStatBlock :: [S] -> S
 fStatBlock ss = (\envOrg -> foldl (\(code, env) s -> (code ++ fst (s env), snd (s env))) ([], envOrg) ss)
+
+-- Hierboven nog par in bouwen en alles hieronder ook
 
 fExprLit :: Literal -> E
 fExprLit l va = (\env -> [LDC n]) where
