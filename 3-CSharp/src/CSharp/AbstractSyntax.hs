@@ -7,8 +7,6 @@ module CSharp.AbstractSyntax where
 type ClassName = String -- Class names
 type Ident = String     -- Variable names
 
-data Env = Env [Decl]
-
 data Class    -- Classes (top-level C# programs)
   = Class ClassName [Member]
   deriving (Eq, Ord, Show)

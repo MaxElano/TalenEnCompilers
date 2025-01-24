@@ -1,0 +1,30 @@
+	Bsr main
+	HALT
+main:
+	LDR MP
+	LDRR MP SP
+	AJS 1
+	LDC 0
+	LDS 0
+	LDLA 1
+	STA 0
+	AJS -1
+	BRA 20
+	LDC 1
+	LDC 1
+	ADD
+	AJS -1
+	LDL 1
+	LDC 1
+	ADD
+	LDS 0
+	LDLA 1
+	STA 0
+	AJS -1
+	LDL 1
+	LDC 5
+	LT
+	BRT -27
+	LDRR SP MP
+	STR MP
+	RET

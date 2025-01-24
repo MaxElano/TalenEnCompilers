@@ -35,9 +35,12 @@ processFile infile = do
   let outfile = addExtension (dropExtension infile) "ssm"
   xs <- readFile infile
   let lex = run "lexer" lexicalScanner $ xs 
-  print(lex)
+  --print(lex)
   let program = run "parser" (pClass <* eof) . run "lexer" lexicalScanner $ xs 
-  print(program)
+  --print(program)
+  let ssm = formatCode $ foldCSharp codeAlgebra program
+  writeFile outfile ssm
+  putStrLn (outfile ++ " written")
 
 
 -- -- processFile compiles one file;

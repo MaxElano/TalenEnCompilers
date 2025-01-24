@@ -10,7 +10,7 @@ data AnalysisResult
 analysisAlgebra :: CSharpAlgebra AnalysisResult () () ()
 analysisAlgebra = undefinedAlgebra { clas = \_ _ -> Valid }
 
-undefinedAlgebra :: CSharpAlgebra a b c d env -> AnalysisResult
+undefinedAlgebra :: CSharpAlgebra a b c d -> AnalysisResult
 undefinedAlgebra = CSharpAlgebra
   fClas (Class      t ms)      = Valid
   fMemb (MemberD    d)         = Valid
