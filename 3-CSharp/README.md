@@ -66,7 +66,7 @@ It is made and maintained by an ex-student over at https://github.com/J00LZ/ssmr
     but they *always* must be declared *before use*.
     So, in a sequence of statements, the environment passed to a statement must contain all variables declared before it.
 
-7. (1.0 pt)
+7. (1.0 pt) Done: Daniël
     Change the code generator for the logical operators, so that they are computed lazily, as is usual in C#.
 
     In other words, the right operand should only be evaluated if necessary to determine the result.
