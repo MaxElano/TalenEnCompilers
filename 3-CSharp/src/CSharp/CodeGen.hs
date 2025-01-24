@@ -16,8 +16,8 @@ import qualified Data.Map as M
 -- Change these definitions instead of the function signatures to get better type errors.
 type C = Code             -- Class
 type M = Code             -- Member
-type S = Env -> (Code, Env)                   -- Statement
-type E = Env -> ValueOrAddress -> Code -- Expression
+type S = Env -> (Code, Env)  -- Statement (Local variables - Parameters)
+type E = Env -> ValueOrAddress -> Code -- Expression (Local variables - Parameters)
 type Env = [(Ident, Int)]
 
 codeAlgebra :: CSharpAlgebra C M S E
