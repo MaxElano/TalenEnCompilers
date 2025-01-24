@@ -49,10 +49,9 @@ fMembMeth :: RetType -> Ident -> [Decl] -> S -> M
 fMembMeth t x ps s = [LABEL x] ++ iniParS ++ fst finCodEnv ++ iniParE ++ [RET]
     where
         finCodEnv = s []
-        iniParS = [LDR MP] ++ [LDRR MP SP] ++ [AJS (length (snd finCodEnv))] --iniVar --Maybe implement the store of the decleration, but that is silly
+        iniParS = [LDR MP] ++ [LDRR MP SP] ++ [AJS (length (snd finCodEnv))]
         iniParE = [LDRR SP MP] ++ [STR MP]
-        --iniVar = map (iniV) (snd finCodEnv)
-        --iniV = 
+
 
 fStatDecl :: Decl -> S
 fStatDecl (Decl _ i) = (\env -> ([], [(i, nn env)] ++ env))
