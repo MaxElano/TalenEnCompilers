@@ -71,7 +71,7 @@ It is made and maintained by an ex-student over at https://github.com/J00LZ/ssmr
 
     In other words, the right operand should only be evaluated if necessary to determine the result.
 
-8. (1.5 pt)
+8. (1.5 pt) 
     Add the possibility to 'call a method with parameters' to the syntax of expressions,
     and add the possibility to deal with such calls to the rest of the compiler.
 

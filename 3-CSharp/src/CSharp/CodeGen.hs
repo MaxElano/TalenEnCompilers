@@ -16,8 +16,8 @@ import qualified Data.Map as M
 -- Change these definitions instead of the function signatures to get better type errors.
 type C = Code             -- Class
 type M = Code             -- Member
-type S = Env -> (Code, Env)  -- Statement (Local variables - Parameters)
-type E = Env -> ValueOrAddress -> Code -- Expression (Local variables - Parameters)
+type S = Env -> Env -> (Code, Env)  -- Statement (Local variables - Parameters -> code, local variables)
+type E = Env -> Env -> ValueOrAddress -> Code -- Expression (Local variables - Parameters -> code)
 type Env = [(Ident, Int)]
 
 codeAlgebra :: CSharpAlgebra C M S E
@@ -48,10 +48,12 @@ fMembDecl d = []
 fMembMeth :: RetType -> Ident -> [Decl] -> S -> M
 fMembMeth t x ps s = [LABEL x] ++ iniParS ++ fst finCodEnv ++ iniParE ++ [RET]
     where
-        finCodEnv = s []
-        iniParS = [LDR MP] ++ [LDRR MP SP] ++ [AJS (length (snd finCodEnv))]
+        finCodEnv = s [] parToEnv
+        iniParS = [LDR MP] ++ [LDRR MP SP] ++ [AJS (length (snd finCodEnv))] --Add parameter shit here somewhere -> See slides
         iniParE = [LDRR SP MP] ++ [STR MP]
+        parToEnv = zipWith (\(Decl _ id) index -> (id, index)) ps [0..]
 
+-- Fixed parameters until here (except for code in fMembMeth)
 
 fStatDecl :: Decl -> S
 fStatDecl (Decl _ i) = (\env -> ([], [(i, nn env)] ++ env))

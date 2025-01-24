@@ -3,10 +3,6 @@ module CSharp.Analysis where
 import CSharp.AbstractSyntax
 import CSharp.Algebra
 
--- data AnalysisResult 
---   = Valid
---   | CompilerError
-
 data AnalysisResult = Valid -- add other constructors for any errors you add analyses for
 
 analysisAlgebra :: CSharpAlgebra AnalysisResult () () ()
