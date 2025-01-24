@@ -18,7 +18,7 @@ type C = Env -> (Code, Env)                   -- Class
 type M = Env -> (Code, Env)                   -- Member
 type S = Env -> (Code, Env)                   -- Statement
 type E = Env -> ValueOrAddress -> Code -- Expression
-type Env = [Decl, Address]
+type Env = [(Decl, Ident)]
 
 codeAlgebra :: CSharpAlgebra C M S E
 codeAlgebra = CSharpAlgebra
@@ -36,38 +36,39 @@ codeAlgebra = CSharpAlgebra
   fExprOp
 
 fClass :: ClassName -> [M] -> C
-fClass c ms = (\env -> ([Bsr "main", HALT] ++ concat ms, env))
+fClass c ms = (\envOrg -> ([Bsr "main", HALT] ++ fst (result envOrg), snd (result envOrg)))
+    where result envOrg = foldl (\(code, env) s -> (code ++ fst (s env), snd (s env))) envOrg ms
 
 fMembDecl :: Decl -> M
-fMembDecl d = (\env -> ([], [d] ++ env))
+fMembDecl d = (\env -> ([], [(d, (snd head env) + 1)] ++ env))
 
 fMembMeth :: RetType -> Ident -> [Decl] -> S -> M
-fMembMeth t x ps s = (\env -> ([LABEL x] ++ s ++ [RET], env))
---Hierna de juiste indexes toevoegen voor elke variabele en lengte vast zetten
-
+fMembMeth t x ps s = (\env -> ([LABEL x] ++ fst (s env) ++ [RET] ++ link (length newEnv), newEnv))
+    where
+        newEnv = s env
 
 fStatDecl :: Decl -> S
-fStatDecl d = (\env -> ([], [d] ++ env))
+fStatDecl d = (\env -> ([], [(d, (snd head env) + 1)] ++ env))
 
 fStatExpr :: E -> S
 fStatExpr e = (\env -> (e Value ++ [pop]))
 
 fStatIf :: E -> S -> S -> S
 fStatIf e s1 s2 = (\env -> (c ++ [BRF (n1 + 2)] ++ s1 ++ [BRA n2] ++ s2, env)) where
-  c        = e Value
+  c env       = e env Value
   (n1, n2) = (codeSize s1, codeSize s2)
 
 fStatWhile :: E -> S -> S
-fStatWhile e s1 = (\env -> ([BRA n] ++ s1 ++ c ++ [BRT (-(n + k + 2))], env)) where
-  c = e Value
-  (n, k) = (codeSize s1, codeSize c)
+fStatWhile e s1 = (\env -> ([BRA fst n env] ++ fst s1 env ++ fst newEnv env ++ [BRT (-(fst n env + fst k env + 2))], snd newEnv env)) where
+  c env = e env Value
+  (n, k) = ((\env -> codeSize s1 env), (\env -> codeSize c env))
+  newEnv env = c env
 
 fStatReturn :: E -> S
 fStatReturn e = (\env -> (e Value ++ [pop] ++ [RET], env))
 
 fStatBlock :: [S] -> S
-fStatBlock ss = foldl (\(code, env) s -> (code ++ fst (s env), snd (s env))) envOr ss
---TO-DO: Deze statement nog checken maar zou wel aardig moeten kloppen denk ik
+fStatBlock ss = (\envOrg -> foldl (\(code, env) s -> (code ++ fst (s env), snd (s env))) envOrg ss)
 
 fExprLit :: Literal -> E
 fExprLit l va = (\env -> [LDC n]) where
@@ -85,8 +86,8 @@ fExprVar x va = (\env -> case va of
           Nothing  -> error "Variable not found"
 
 fExprOp :: Operator -> E -> E -> E
-fExprOp OpAsg e1 e2 va = (\env -> e2 Value ++ [LDS 0] ++ e1 Address ++ [STA 0], env)
-fExprOp op    e1 e2 va = (\env -> e1 Value ++ e2 Value ++ [
+fExprOp OpAsg e1 e2 va = (\env -> (e2 Value ++ [LDS 0] ++ e1 Address ++ [STA 0], env))
+fExprOp op    e1 e2 va = (\env -> (e1 Value ++ e2 Value ++ [
    case op of
     { OpAdd -> ADD; OpSub -> SUB; OpMul -> MUL; OpDiv -> DIV;
     ; OpMod -> MOD
@@ -94,7 +95,7 @@ fExprOp op    e1 e2 va = (\env -> e1 Value ++ e2 Value ++ [
     ; OpLeq -> LE; OpLt -> LT;
     ; OpGeq -> GT; OpGt -> GT;
     ; OpEq  -> EQ; OpNeq -> NE;}
-  ])
+  ]))
 
 -- | Whether we are computing the value of a variable, or a pointer to it
 data ValueOrAddress = Value | Address

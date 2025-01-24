@@ -8,7 +8,7 @@ data AnalysisResult = Valid -- add other constructors for any errors you add ana
 analysisAlgebra :: CSharpAlgebra AnalysisResult () () ()
 analysisAlgebra = undefinedAlgebra { clas = \_ _ -> Valid }
 
-undefinedAlgebra :: CSharpAlgebra a b c d env
+undefinedAlgebra :: CSharpAlgebra a b c d
 undefinedAlgebra = CSharpAlgebra
   undefined
   undefined
