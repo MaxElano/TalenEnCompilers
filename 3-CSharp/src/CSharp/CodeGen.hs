@@ -80,11 +80,13 @@ fExprVar x va = case va of
 
 fExprOp :: Operator -> E -> E -> E
 fExprOp OpAsg e1 e2 va = e2 Value ++ [LDS 0] ++ e1 Address ++ [STA 0]
+fExprOp OpAnd e1 e2 va = e1 Value ++ [BRT 4] ++ [STS $ bool2int True] ++ [BRA $ codeSize (e2 Value) + 2] ++ e2 Value ++ [AND]
+fExprOp OpOr  e1 e2 va = e1 Value ++ [BRF 4] ++ [STS $ bool2int False] ++ [BRA $ codeSize (e2 Value) + 2] ++ e2 Value ++ [OR]
 fExprOp op    e1 e2 va = e1 Value ++ e2 Value ++ [
    case op of
     { OpAdd -> ADD; OpSub -> SUB; OpMul -> MUL; OpDiv -> DIV;
     ; OpMod -> MOD
-    ; OpAnd -> AND; OpOr -> OR; OpXor -> XOR;
+    ; OpXor -> XOR;
     ; OpLeq -> LE; OpLt -> LT;
     ; OpGeq -> GT; OpGt -> GT;
     ; OpEq  -> EQ; OpNeq -> NE;}
