@@ -43,9 +43,10 @@ fMembDecl :: Decl -> M
 fMembDecl d = (\env -> ([], [(d, (snd head env) + 1)] ++ env))
 
 fMembMeth :: RetType -> Ident -> [Decl] -> S -> M
-fMembMeth t x ps s = (\env -> ([LABEL x] ++ fst (s env) ++ [RET] ++ link (length newEnv), newEnv))
+fMembMeth t x ps s = (\env -> ([LABEL x] ++ fst (s env) ++ [RET] ++ [LDR MP] ++ [LDRR MP SP] ++ [AJS + length newEnv] ++ createSSMCode newEnv, newEnv))
     where
         newEnv = s env
+        createSSMCode env = map (\(decl, index) -> [LDL index]) env
 
 fStatDecl :: Decl -> S
 fStatDecl d = (\env -> ([], [(d, (snd head env) + 1)] ++ env))
@@ -61,7 +62,7 @@ fStatIf e s1 s2 = (\env -> (c ++ [BRF (n1 + 2)] ++ s1 ++ [BRA n2] ++ s2, env)) w
 fStatWhile :: E -> S -> S
 fStatWhile e s1 = (\env -> ([BRA fst n env] ++ fst s1 env ++ fst newEnv env ++ [BRT (-(fst n env + fst k env + 2))], snd newEnv env)) where
   c env = e env Value
-  (n, k) = ((\env -> codeSize s1 env), (\env -> codeSize c env))
+  (n, k) = ((\env -> codeSize (s1 env)), (\env -> codeSize (c env)))
   newEnv env = c env
 
 fStatReturn :: E -> S
@@ -86,8 +87,8 @@ fExprVar x va = (\env -> case va of
           Nothing  -> error "Variable not found"
 
 fExprOp :: Operator -> E -> E -> E
-fExprOp OpAsg e1 e2 va = (\env -> (e2 Value ++ [LDS 0] ++ e1 Address ++ [STA 0], env))
-fExprOp op    e1 e2 va = (\env -> (e1 Value ++ e2 Value ++ [
+fExprOp OpAsg e1 e2 va = (\env -> (fst (result2 env Value) ++ [LDS 0] ++ (result1 (snd (result2 env Value)) Address) ++ [STA 0], env))
+fExprOp op    e1 e2 va = (\env -> (fst (result1 env Value) ++ fst (result2 (snd (result1 env Value)) Value) ++ [
    case op of
     { OpAdd -> ADD; OpSub -> SUB; OpMul -> MUL; OpDiv -> DIV;
     ; OpMod -> MOD
@@ -96,6 +97,9 @@ fExprOp op    e1 e2 va = (\env -> (e1 Value ++ e2 Value ++ [
     ; OpGeq -> GT; OpGt -> GT;
     ; OpEq  -> EQ; OpNeq -> NE;}
   ]))
+  where
+    result1 env d = e1 env d
+    result2 env d = e2 env d
 
 -- | Whether we are computing the value of a variable, or a pointer to it
 data ValueOrAddress = Value | Address

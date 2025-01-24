@@ -37,8 +37,8 @@ processFile infile = do
   let lex = run "lexer" lexicalScanner $ xs 
   print(lex)
   let program = run "parser" (pClass <* eof) . run "lexer" lexicalScanner $ xs 
-  print(program)
-  let ssm = formatCode $ foldCSharp codeAlgebra program
+  print(program)s
+  let ssm = formatCode $ (foldCSharp codeAlgebra program) [(,0)]
   writeFile outfile ssm
   putStrLn (outfile ++ " written")
 
