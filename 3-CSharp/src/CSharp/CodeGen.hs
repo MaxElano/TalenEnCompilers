@@ -14,11 +14,11 @@ import qualified Data.Map as M
 
 -- The types that we generate for each datatype: our type variables for the algebra.
 -- Change these definitions instead of the function signatures to get better type errors.
-type C = Env -> (Code, Env)                   -- Class
-type M = Env -> (Code, Env)                   -- Member
+type C = Code             -- Class
+type M = Code             -- Member
 type S = Env -> (Code, Env)                   -- Statement
 type E = Env -> ValueOrAddress -> Code -- Expression
-type Env = [(Decl, Ident)]
+type Env = [(Ident, Int)]
 
 codeAlgebra :: CSharpAlgebra C M S E
 codeAlgebra = CSharpAlgebra
@@ -36,44 +36,53 @@ codeAlgebra = CSharpAlgebra
   fExprOp
 
 fClass :: ClassName -> [M] -> C
-fClass c ms = (\envOrg -> ([Bsr "main", HALT] ++ fst (result envOrg), snd (result envOrg)))
-    where result envOrg = foldl (\(code, env) s -> (code ++ fst (s env), snd (s env))) envOrg ms
+fClass c ms = [Bsr "main", HALT] ++ concat ms
+
+--fClass c ms = (\envOrg -> ([Bsr "main", HALT] ++ fst (result envOrg), snd (result envOrg)))
+--    where result envOrg = foldl (\(code, env) s -> (code ++ fst (s env), snd (s env))) envOrg ms
 
 fMembDecl :: Decl -> M
-fMembDecl d = (\env -> ([], [(d, (snd head env) + 1)] ++ env))
+fMembDecl d = []
+--fMembDecl d = (\env -> ([], [(d, (snd head env) + 1)] ++ env))
 
 fMembMeth :: RetType -> Ident -> [Decl] -> S -> M
-fMembMeth t x ps s = (\env -> ([LABEL x] ++ fst (s env) ++ [RET] ++ [LDR MP] ++ [LDRR MP SP] ++ [AJS + length newEnv env] ++ createSSMCode newEnv env, newEnv env))
+fMembMeth t x ps s = [LABEL x] ++ iniParS ++ fst finCodEnv ++ iniParE ++ [RET]
     where
-        newEnv env = s env
-        createSSMCode env = map (\(decl, index) -> [LDL index]) env
+        finCodEnv = s []
+        iniParS = [LDR MP] ++ [LDRR MP SP] ++ [AJS (length (snd finCodEnv))] --iniVar --Maybe implement the store of the decleration, but that is silly
+        iniParE = [LDRR SP MP] ++ [STR MP]
+        --iniVar = map (iniV) (snd finCodEnv)
+        --iniV = 
 
 fStatDecl :: Decl -> S
-fStatDecl d = (\env -> ([], [(d, (snd head env) + 1)] ++ env))
+fStatDecl (Decl _ i) = (\env -> ([], [(i, nn env)] ++ env))
+    where
+        nn []  = 1
+        nn env = (snd (head env)) + 1
 
 fStatExpr :: E -> S
-fStatExpr e = (\env -> (e Value ++ [pop]))
+fStatExpr e = (\env -> (e env Value ++ [pop], env))
 
 fStatIf :: E -> S -> S -> S
-fStatIf e s1 s2 = (\env -> (c ++ [BRF (n1 env + 2)] ++ fst b2 env ++ [BRA b3 env] ++ fst b4 env, snd (b4 env))) where
-  c env       = e env Value
-  n1 env = codeSize fst (s1 env)
-  n2 env = codeSize fst (s2 env)
-  b2 env = s1 (snd s1 env)
-  b3 env = n2 (snd b2 env)
-  b4 env = s2 (snd b2 env)
+fStatIf e s1 s2 = (\env -> (c env ++ [BRF (n1 env + 2)] ++ fst (s1 env) ++ [BRA (n2 env)] ++ fst (s2 (fEnv env)), sEnv env)) where
+  c env  = e env Value
+  n1 env = codeSize (fst (s1 env))
+  n2 env = codeSize (fst (s2 env))
+  fEnv env = snd (s1 env)
+  sEnv env = snd (s2 (fEnv env))
 
 fStatWhile :: E -> S -> S
-fStatWhile e s1 = (\env -> ([BRA fst n env] ++ fst s1 env ++ fst newEnv env ++ [BRT (-(fst n env + fst k env + 2))], snd newEnv env)) where
+fStatWhile e s1 = (\env -> ([BRA (n env)] ++ fst (s1 env) ++ c (fEnv env) ++ [BRT (-(n (fEnv env) + k (fEnv env) + 2))], fEnv env)) where
   c env = e env Value
-  (n, k) = ((\env -> codeSize (s1 env)), (\env -> codeSize (c env)))
-  newEnv env = c env
+  n env = codeSize (fst (s1 env))
+  k env = codeSize (c env)
+  fEnv env = snd (s1 env)
 
 fStatReturn :: E -> S
-fStatReturn e = (\env -> (e Value ++ [pop] ++ [RET], env))
+fStatReturn e = (\env -> (e env Value ++ [pop] ++ [RET], env))
 
 fStatBlock :: [S] -> S
-fStatBlock ss = (\envOrg -> foldl (\(code, env) s -> (code ++ fst (s env), snd (s env))) envOrg ss)
+fStatBlock ss = (\envOrg -> foldl (\(code, env) s -> (code ++ fst (s env), snd (s env))) ([], envOrg) ss)
 
 fExprLit :: Literal -> E
 fExprLit l va = (\env -> [LDC n]) where
@@ -82,28 +91,27 @@ fExprLit l va = (\env -> [LDC n]) where
     LitBool b -> bool2int b
 
 fExprVar :: Ident -> E
-fExprVar x va = (\env -> case va of
-    Value   ->  [LDL  loc env]
-    Address ->  [LDLA loc env])
+fExprVar x = (\env va -> case va of
+    Value   ->  [LDL  (loc env)]
+    Address ->  [LDLA (loc env)])
   --where loc = 42
-  where loc env = case M.lookup x env of
+  where loc env = case lookup x env of
           Just loc -> loc
           Nothing  -> error "Variable not found"
 
 fExprOp :: Operator -> E -> E -> E
-fExprOp OpAsg e1 e2 va = (\env -> (fst (result2 env Value) ++ [LDS 0] ++ (result1 (snd (result2 env Value)) Address) ++ [STA 0], env))
-fExprOp op    e1 e2 va = (\env -> (fst (result1 env Value) ++ fst (result2 (snd (result1 env Value)) Value) ++ [
+fExprOp OpAsg e1 e2 = (\env va -> e2 env Value ++ [LDS 0] ++ e1 env Address ++ [STA 0]) --This needs to take env in account
+fExprOp OpAnd e1 e2 = (\env va -> e1 env Value ++ [BRT 4] ++ [STS $ bool2int True] ++ [BRA $ codeSize (e2 env Value) + 2] ++ e2 env Value ++ [AND])
+fExprOp OpOr  e1 e2 = (\env va -> e1 env Value ++ [BRF 4] ++ [STS $ bool2int False] ++ [BRA $ codeSize (e2 env Value) + 2] ++ e2 env Value ++ [OR])
+fExprOp op    e1 e2 = (\env va -> e1 env Value ++ e2 env Value ++ [
    case op of
-    { OpAdd -> ADD; OpSub -> SUB; OpMul -> MUL; OpDiv -> DIV
+    { OpAdd -> ADD; OpSub -> SUB; OpMul -> MUL; OpDiv -> DIV;
     ; OpMod -> MOD
-    ; OpAnd -> AND; OpOr -> OR; OpXor -> XOR
-    ; OpLeq -> LE; OpLt -> LT
-    ; OpGeq -> GT; OpGt -> GT
+    ; OpXor -> XOR;
+    ; OpLeq -> LE; OpLt -> LT;
+    ; OpGeq -> GT; OpGt -> GT;
     ; OpEq  -> EQ; OpNeq -> NE;}
-  ]))
-  where
-    result1 env d = e1 env d
-    result2 env d = e2 env d
+  ])
 
 -- | Whether we are computing the value of a variable, or a pointer to it
 data ValueOrAddress = Value | Address

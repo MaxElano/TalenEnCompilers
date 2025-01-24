@@ -56,7 +56,7 @@ It is made and maintained by an ex-student over at https://github.com/J00LZ/ssmr
     Hint: you may find generating code for `for` loops easier if you first translate
     their abstract syntax to use `while` loops (this is called 'desugaring').
 
-6. (2 pt) 
+6. (2 pt) Done: Max
     Adapt the code generator such that the declared local variables can be used.
 
     Hint: you should change the result type for statements in the algebra to be a *pair* of two things:
