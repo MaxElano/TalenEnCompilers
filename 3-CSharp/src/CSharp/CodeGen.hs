@@ -16,8 +16,8 @@ import qualified Data.Map as M
 -- Change these definitions instead of the function signatures to get better type errors.
 type C = Code             -- Class
 type M = Code             -- Member
-type S = Env -> (Code, Env)  -- Statement (Local variables - Parameters)
-type E = Env -> ValueOrAddress -> Code -- Expression (Local variables - Parameters)
+type S = Env -> Env -> (Code, Env)  -- Statement (Local variables - Parameters -> code, local variables)
+type E = Env -> Env -> ValueOrAddress -> Code -- Expression (Local variables - Parameters -> code)
 type Env = [(Ident, Int)]
 
 codeAlgebra :: CSharpAlgebra C M S E
@@ -34,6 +34,7 @@ codeAlgebra = CSharpAlgebra
   fExprLit
   fExprVar
   fExprOp
+  fExprMeth
 
 fClass :: ClassName -> [M] -> C
 fClass c ms = [Bsr "main", HALT] ++ concat ms
@@ -46,63 +47,67 @@ fMembDecl d = []
 --fMembDecl d = (\env -> ([], [(d, (snd head env) + 1)] ++ env))
 
 fMembMeth :: RetType -> Ident -> [Decl] -> S -> M
-fMembMeth t x ps s = [LABEL x] ++ iniParS ++ fst finCodEnv ++ iniParE ++ [RET]
+fMembMeth t x ps s = [LABEL x] ++ iniLocS ++ fst finCodEnv ++ iniLocE ++ [RET]
     where
-        finCodEnv = s []
-        iniParS = [LDR MP] ++ [LDRR MP SP] ++ [AJS (length (snd finCodEnv))]
-        iniParE = [LDRR SP MP] ++ [STR MP]
+        finCodEnv = s [] parToEnv
+        iniLocS = [LDR MP] ++ [LDRR MP SP] ++ [AJS $ length (snd finCodEnv)] --Add parameter shit here somewhere -> See slides
+        iniLocE = [LDRR SP MP] ++ [STR MP] ++ [STS $ -(length ps)] ++ [AJS $ -((length ps) - 1)]
+        parToEnv = zipWith (\(Decl _ id) index -> (id, index)) ps (iterate (\l -> l - 1) (length ps + 1))
 
+-- Fixed parameters until here (except for code in fMembMeth)
 
 fStatDecl :: Decl -> S
-fStatDecl (Decl _ i) = (\env -> ([], [(i, nn env)] ++ env))
+fStatDecl (Decl _ i) = (\env par -> ([], [(i, nn env)] ++ env))
     where
         nn []  = 1
         nn env = (snd (head env)) + 1
 
 fStatExpr :: E -> S
-fStatExpr e = (\env -> (e env Value ++ [pop], env))
+fStatExpr e = (\env par -> (e env par Value ++ [pop], env))
 
 fStatIf :: E -> S -> S -> S
-fStatIf e s1 s2 = (\env -> (c env ++ [BRF (n1 env + 2)] ++ fst (s1 env) ++ [BRA (n2 env)] ++ fst (s2 (fEnv env)), sEnv env)) where
-  c env  = e env Value
-  n1 env = codeSize (fst (s1 env))
-  n2 env = codeSize (fst (s2 env))
-  fEnv env = snd (s1 env)
-  sEnv env = snd (s2 (fEnv env))
+fStatIf e s1 s2 = (\env par -> (c env par ++ [BRF $ n1 env par + 2] ++ fst (s1 env par) ++ [BRA $ n2 env par] ++ fst (s2 (fEnv env par) par), sEnv env par)) where
+  c env par  = e env par Value
+  n1 env par = codeSize (fst (s1 env par))
+  n2 env par = codeSize (fst (s2 env par))
+  fEnv env par = snd (s1 env par)
+  sEnv env par = snd (s2 (fEnv env par) par)
 
 fStatWhile :: E -> S -> S
-fStatWhile e s1 = (\env -> ([BRA (n env)] ++ fst (s1 env) ++ c (fEnv env) ++ [BRT (-(n (fEnv env) + k (fEnv env) + 2))], fEnv env)) where
-  c env = e env Value
-  n env = codeSize (fst (s1 env))
-  k env = codeSize (c env)
-  fEnv env = snd (s1 env)
+fStatWhile e s1 = (\env par -> ([BRA $ n env par] ++ fst (s1 env par) ++ c (fEnv env par) par ++ [BRT $ -(n (fEnv env par) par + k (fEnv env par) par + 2)], fEnv env par)) where
+  c env par = e env par Value
+  n env par = codeSize (fst (s1 env par))
+  k env par = codeSize (c env par)
+  fEnv env par= snd (s1 env par)
 
 fStatReturn :: E -> S
-fStatReturn e = (\env -> (e env Value ++ [pop] ++ [RET], env))
+fStatReturn e = (\env par -> (e env par Value ++ [pop] ++ [RET], env))
 
 fStatBlock :: [S] -> S
-fStatBlock ss = (\envOrg -> foldl (\(code, env) s -> (code ++ fst (s env), snd (s env))) ([], envOrg) ss)
+fStatBlock ss = (\envOrg par -> foldl (\(code, env) s -> (code ++ fst (s env par), snd (s env par))) ([], envOrg) ss)
 
 fExprLit :: Literal -> E
-fExprLit l va = (\env -> [LDC n]) where
+fExprLit l = (\env par va -> [LDC n]) where
   n = case l of
     LitInt n -> n
     LitBool b -> bool2int b
 
 fExprVar :: Ident -> E
-fExprVar x = (\env va -> case va of
-    Value   ->  [LDL  (loc env)]
-    Address ->  [LDLA (loc env)])
+fExprVar x = (\env par va -> case va of
+    Value   ->  [LDL  $ loc env par]
+    Address ->  [LDLA $ loc env par])
   --where loc = 42
-  where loc env = case lookup x env of
-          Just loc -> loc
-          Nothing  -> error "Variable not found"
+  where loc env par = case lookup x par of
+          Just loc -> -loc
+          Nothing -> (case lookup x env of
+                    Just loc -> loc
+                    Nothing  -> error "Variable not found")
 
 fExprOp :: Operator -> E -> E -> E
-fExprOp OpAsg e1 e2 = (\env va -> e2 env Value ++ [LDS 0] ++ e1 env Address ++ [STA 0]) --This needs to take env in account
-fExprOp OpAnd e1 e2 = (\env va -> e1 env Value ++ [BRT 4] ++ [STS $ bool2int True] ++ [BRA $ codeSize (e2 env Value) + 2] ++ e2 env Value ++ [AND])
-fExprOp OpOr  e1 e2 = (\env va -> e1 env Value ++ [BRF 4] ++ [STS $ bool2int False] ++ [BRA $ codeSize (e2 env Value) + 2] ++ e2 env Value ++ [OR])
-fExprOp op    e1 e2 = (\env va -> e1 env Value ++ e2 env Value ++ [
+fExprOp OpAsg e1 e2 = (\env par va -> e2 env par Value ++ [LDS 0] ++ e1 env par Address ++ [STA 0])
+fExprOp OpAnd e1 e2 = (\env par va -> e1 env par Value ++ [BRT 4] ++ [STS $ bool2int True] ++ [BRA $ codeSize (e2 env par Value) + 2] ++ e2 env par Value ++ [AND])
+fExprOp OpOr  e1 e2 = (\env par va -> e1 env par Value ++ [BRF 4] ++ [STS $ bool2int False] ++ [BRA $ codeSize (e2 env par Value) + 2] ++ e2 env par Value ++ [OR])
+fExprOp op    e1 e2 = (\env par va -> e1 env par Value ++ e2 env par Value ++ [
    case op of
     { OpAdd -> ADD; OpSub -> SUB; OpMul -> MUL; OpDiv -> DIV;
     ; OpMod -> MOD
@@ -111,6 +116,12 @@ fExprOp op    e1 e2 = (\env va -> e1 env Value ++ e2 env Value ++ [
     ; OpGeq -> GT; OpGt -> GT;
     ; OpEq  -> EQ; OpNeq -> NE;}
   ])
+
+fExprMeth :: Ident -> [E] -> E
+fExprMeth id ps = (\env par va -> parOnStack env par va ++ [Bsr id])
+    where
+        parOnStack :: E
+        parOnStack = (\env par va -> concatMap (\p -> p env par Value) ps)
 
 -- | Whether we are computing the value of a variable, or a pointer to it
 data ValueOrAddress = Value | Address

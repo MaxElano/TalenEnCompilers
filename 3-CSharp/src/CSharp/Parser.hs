@@ -253,6 +253,7 @@ pLiteral =  LitBool <$> sBoolLit
 
 pExprSimple :: Parser Token Expr
 pExprSimple =  ExprLit  <$> pLiteral
+           <|> ExprMeth <$> sLowerId <*> (punctuation POpen *> greedy (pExpr <* optional (punctuation Comma)) <* punctuation PClose)
            <|> ExprVar  <$> sLowerId
            <|> parenthesised pExpr
 
