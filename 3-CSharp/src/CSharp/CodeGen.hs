@@ -46,12 +46,12 @@ fMembDecl d = []
 --fMembDecl d = (\env -> ([], [(d, (snd head env) + 1)] ++ env))
 
 fMembMeth :: RetType -> Ident -> [Decl] -> S -> M
-fMembMeth t x ps s = [LABEL x] ++ iniParS ++ fst finCodEnv ++ iniParE ++ [RET]
+fMembMeth t x ps s = [LABEL x] ++ iniLocS ++ fst finCodEnv ++ iniLocE ++ [RET]
     where
         finCodEnv = s [] parToEnv
-        iniParS = [LDR MP] ++ [LDRR MP SP] ++ [AJS (length (snd finCodEnv))] --Add parameter shit here somewhere -> See slides
-        iniParE = [LDRR SP MP] ++ [STR MP]
-        parToEnv = zipWith (\(Decl _ id) index -> (id, index)) ps [0..]
+        iniLocS = [LDR MP] ++ [LDRR MP SP] ++ [AJS $ length (snd finCodEnv)] --Add parameter shit here somewhere -> See slides
+        iniLocE = [LDRR SP MP] ++ [STR MP] ++ [STS $ -(length ps)] ++ [AJS $ -((length ps) - 1)]
+        parToEnv = zipWith (\(Decl _ id) index -> (id, index)) ps (iterate (\l -> l - 1) (length ps + 1))
 
 -- Fixed parameters until here (except for code in fMembMeth)
 
@@ -65,7 +65,7 @@ fStatExpr :: E -> S
 fStatExpr e = (\env par -> (e env par Value ++ [pop], env))
 
 fStatIf :: E -> S -> S -> S
-fStatIf e s1 s2 = (\env par -> (c env par ++ [BRF (n1 env par + 2)] ++ fst (s1 env par) ++ [BRA (n2 env par)] ++ fst (s2 (fEnv env par) par), sEnv env par)) where
+fStatIf e s1 s2 = (\env par -> (c env par ++ [BRF $ n1 env par + 2] ++ fst (s1 env par) ++ [BRA $ n2 env par] ++ fst (s2 (fEnv env par) par), sEnv env par)) where
   c env par  = e env par Value
   n1 env par = codeSize (fst (s1 env par))
   n2 env par = codeSize (fst (s2 env par))
@@ -73,7 +73,7 @@ fStatIf e s1 s2 = (\env par -> (c env par ++ [BRF (n1 env par + 2)] ++ fst (s1 e
   sEnv env par = snd (s2 (fEnv env par) par)
 
 fStatWhile :: E -> S -> S
-fStatWhile e s1 = (\env par -> ([BRA (n env par)] ++ fst (s1 env par) ++ c (fEnv env par) par ++ [BRT (-(n (fEnv env par) par + k (fEnv env par) par + 2))], fEnv env par)) where
+fStatWhile e s1 = (\env par -> ([BRA $ n env par] ++ fst (s1 env par) ++ c (fEnv env par) par ++ [BRT $ -(n (fEnv env par) par + k (fEnv env par) par + 2)], fEnv env par)) where
   c env par = e env par Value
   n env par = codeSize (fst (s1 env par))
   k env par = codeSize (c env par)
@@ -83,30 +83,30 @@ fStatReturn :: E -> S
 fStatReturn e = (\env par -> (e env par Value ++ [pop] ++ [RET], env))
 
 fStatBlock :: [S] -> S
-fStatBlock ss = (\envOrg -> foldl (\(code, env) s -> (code ++ fst (s env), snd (s env))) ([], envOrg) ss)
-
--- Hierboven nog par in bouwen en alles hieronder ook
+fStatBlock ss = (\envOrg par -> foldl (\(code, env) s -> (code ++ fst (s env par), snd (s env par))) ([], envOrg) ss)
 
 fExprLit :: Literal -> E
-fExprLit l va = (\env -> [LDC n]) where
+fExprLit l = (\env par va -> [LDC n]) where
   n = case l of
     LitInt n -> n
     LitBool b -> bool2int b
 
 fExprVar :: Ident -> E
-fExprVar x = (\env va -> case va of
-    Value   ->  [LDL  (loc env)]
-    Address ->  [LDLA (loc env)])
+fExprVar x = (\env par va -> case va of
+    Value   ->  [LDL  $ loc env par]
+    Address ->  [LDLA $ loc env par])
   --where loc = 42
-  where loc env = case lookup x env of
-          Just loc -> loc
-          Nothing  -> error "Variable not found"
+  where loc env par = case lookup x par of
+          Just loc -> -loc
+          Nothing -> (case lookup x env of
+                    Just loc -> loc
+                    Nothing  -> error "Variable not found")
 
 fExprOp :: Operator -> E -> E -> E
-fExprOp OpAsg e1 e2 = (\env va -> e2 env Value ++ [LDS 0] ++ e1 env Address ++ [STA 0]) --This needs to take env in account
-fExprOp OpAnd e1 e2 = (\env va -> e1 env Value ++ [BRT 4] ++ [STS $ bool2int True] ++ [BRA $ codeSize (e2 env Value) + 2] ++ e2 env Value ++ [AND])
-fExprOp OpOr  e1 e2 = (\env va -> e1 env Value ++ [BRF 4] ++ [STS $ bool2int False] ++ [BRA $ codeSize (e2 env Value) + 2] ++ e2 env Value ++ [OR])
-fExprOp op    e1 e2 = (\env va -> e1 env Value ++ e2 env Value ++ [
+fExprOp OpAsg e1 e2 = (\env par va -> e2 env par Value ++ [LDS 0] ++ e1 env par Address ++ [STA 0]) --This needs to take env in account
+fExprOp OpAnd e1 e2 = (\env par va -> e1 env par Value ++ [BRT 4] ++ [STS $ bool2int True] ++ [BRA $ codeSize (e2 env par Value) + 2] ++ e2 env par Value ++ [AND])
+fExprOp OpOr  e1 e2 = (\env par va -> e1 env par Value ++ [BRF 4] ++ [STS $ bool2int False] ++ [BRA $ codeSize (e2 env par Value) + 2] ++ e2 env par Value ++ [OR])
+fExprOp op    e1 e2 = (\env par va -> e1 env par Value ++ e2 env par Value ++ [
    case op of
     { OpAdd -> ADD; OpSub -> SUB; OpMul -> MUL; OpDiv -> DIV;
     ; OpMod -> MOD

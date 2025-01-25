@@ -27,4 +27,6 @@ main:
 	BRT -27
 	LDRR SP MP
 	STR MP
+	STS 0
+	AJS 1
 	RET
