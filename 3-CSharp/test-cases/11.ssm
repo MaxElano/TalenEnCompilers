@@ -3,30 +3,42 @@
 main:
 	LDR MP
 	LDRR MP SP
-	AJS 1
-	LDC 0
-	LDS 0
-	LDLA 1
-	STA 0
+	AJS 0
+	LDC 3
+	Bsr printSquare
 	AJS -1
-	BRA 20
-	LDC 1
-	LDC 1
-	ADD
-	AJS -1
-	LDL 1
-	LDC 1
-	ADD
-	LDS 0
-	LDLA 1
-	STA 0
-	AJS -1
-	LDL 1
+	LDC 4
 	LDC 5
-	LT
-	BRT -27
+	Bsr printAdd
+	AJS -1
 	LDRR SP MP
 	STR MP
 	STS 0
 	AJS 1
+	RET
+printSquare:
+	LDR MP
+	LDRR MP SP
+	AJS 0
+	LDL -2
+	LDL -2
+	MUL
+	AJS -1
+	LDRR SP MP
+	STR MP
+	STS -1
+	AJS 0
+	RET
+printAdd:
+	LDR MP
+	LDRR MP SP
+	AJS 0
+	LDL -3
+	LDL -2
+	ADD
+	AJS -1
+	LDRR SP MP
+	STR MP
+	STS -2
+	AJS -1
 	RET

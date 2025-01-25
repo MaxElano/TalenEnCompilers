@@ -34,6 +34,7 @@ codeAlgebra = CSharpAlgebra
   fExprLit
   fExprVar
   fExprOp
+  fExprMeth
 
 fClass :: ClassName -> [M] -> C
 fClass c ms = [Bsr "main", HALT] ++ concat ms
@@ -103,7 +104,7 @@ fExprVar x = (\env par va -> case va of
                     Nothing  -> error "Variable not found")
 
 fExprOp :: Operator -> E -> E -> E
-fExprOp OpAsg e1 e2 = (\env par va -> e2 env par Value ++ [LDS 0] ++ e1 env par Address ++ [STA 0]) --This needs to take env in account
+fExprOp OpAsg e1 e2 = (\env par va -> e2 env par Value ++ [LDS 0] ++ e1 env par Address ++ [STA 0])
 fExprOp OpAnd e1 e2 = (\env par va -> e1 env par Value ++ [BRT 4] ++ [STS $ bool2int True] ++ [BRA $ codeSize (e2 env par Value) + 2] ++ e2 env par Value ++ [AND])
 fExprOp OpOr  e1 e2 = (\env par va -> e1 env par Value ++ [BRF 4] ++ [STS $ bool2int False] ++ [BRA $ codeSize (e2 env par Value) + 2] ++ e2 env par Value ++ [OR])
 fExprOp op    e1 e2 = (\env par va -> e1 env par Value ++ e2 env par Value ++ [
@@ -115,6 +116,12 @@ fExprOp op    e1 e2 = (\env par va -> e1 env par Value ++ e2 env par Value ++ [
     ; OpGeq -> GT; OpGt -> GT;
     ; OpEq  -> EQ; OpNeq -> NE;}
   ])
+
+fExprMeth :: Ident -> [E] -> E
+fExprMeth id ps = (\env par va -> parOnStack env par va ++ [Bsr id])
+    where
+        parOnStack :: E
+        parOnStack = (\env par va -> concatMap (\p -> p env par Value) ps)
 
 -- | Whether we are computing the value of a variable, or a pointer to it
 data ValueOrAddress = Value | Address

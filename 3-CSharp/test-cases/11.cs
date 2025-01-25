@@ -1,7 +1,14 @@
 class Hello {
-    void main() {        
-        for(int i, i = 0; i < 5; i = i + 1){
-            1 + 1;
-        }
+    void main() {
+       printSquare(3);
+       printAdd(4,5);
+    }
+
+    void printSquare(int x) {
+        x * x;
+    }
+
+    void printAdd(int x, int y){
+        x + y;
     }
 }
