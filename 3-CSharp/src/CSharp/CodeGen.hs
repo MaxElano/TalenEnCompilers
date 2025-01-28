@@ -39,18 +39,14 @@ codeAlgebra = CSharpAlgebra
 fClass :: ClassName -> [M] -> C
 fClass c ms = [Bsr "main", HALT] ++ concat ms
 
---fClass c ms = (\envOrg -> ([Bsr "main", HALT] ++ fst (result envOrg), snd (result envOrg)))
---    where result envOrg = foldl (\(code, env) s -> (code ++ fst (s env), snd (s env))) envOrg ms
-
 fMembDecl :: Decl -> M
 fMembDecl d = []
---fMembDecl d = (\env -> ([], [(d, (snd head env) + 1)] ++ env))
 
 fMembMeth :: RetType -> Ident -> [Decl] -> S -> M
 fMembMeth t x ps s = [LABEL x] ++ iniLocS ++ fst finCodEnv ++ iniLocE ++ [RET]
     where
         finCodEnv = s [] parToEnv
-        iniLocS = [LDR MP] ++ [LDRR MP SP] ++ [AJS $ length (snd finCodEnv)] --Add parameter shit here somewhere -> See slides
+        iniLocS = [LDR MP] ++ [LDRR MP SP] ++ [AJS $ length (snd finCodEnv)]
         iniLocE = [LDRR SP MP] ++ [STR MP] ++ [STS $ -(length ps)] ++ [AJS $ -((length ps) - 1)]
         parToEnv = zipWith (\(Decl _ id) index -> (id, index)) ps (iterate (\l -> l - 1) (length ps + 1))
 
