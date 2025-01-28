@@ -77,7 +77,7 @@ fStatWhile e s1 = (\env par -> ([BRA $ n env par] ++ fst (s1 env par) ++ c (fEnv
   fEnv env par= snd (s1 env par)
 
 fStatReturn :: E -> S
-fStatReturn e = (\env par -> (e env par Value ++ [pop] ++ [RET], env))
+fStatReturn e = (\env par -> (e env par Value ++ [STR R3] ++ [RET], env))
 
 fStatBlock :: [S] -> S
 fStatBlock ss = (\envOrg par -> foldl (\(code, env) s -> (code ++ fst (s env par), snd (s env par))) ([], envOrg) ss)
@@ -114,10 +114,14 @@ fExprOp op    e1 e2 = (\env par va -> e1 env par Value ++ e2 env par Value ++ [
   ])
 
 fExprMeth :: Ident -> [E] -> E
-fExprMeth id ps = (\env par va -> parOnStack env par va ++ [Bsr id])
+fExprMeth "print" ps = parOnStack
     where
         parOnStack :: E
-        parOnStack = (\env par va -> concatMap (\p -> p env par Value) ps)
+        parOnStack env par va = concatMap (\p -> p env par Value ++ [TRAP 0]) ps
+fExprMeth id ps = \env par va -> parOnStack env par va ++ [Bsr id] ++ [LDR R3]
+    where
+        parOnStack :: E
+        parOnStack env par va = concatMap (\p -> p env par Value) ps
 
 -- | Whether we are computing the value of a variable, or a pointer to it
 data ValueOrAddress = Value | Address
@@ -126,4 +130,4 @@ data ValueOrAddress = Value | Address
 -- Encode a C# bool as an int, for the SSM
 bool2int :: Bool -> Int
 bool2int True  = -1
-bool2int False = 0 
+bool2int False = 0

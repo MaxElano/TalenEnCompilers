@@ -5,10 +5,11 @@ class Hello
     void main()
     {
         int b;
-        b = 1;
+        b = 5;
+        print(b,b);
     }
     
-    int square( int x )
+    int square( bool x )
     {
         int y;
         y = x*x;
@@ -17,7 +18,6 @@ class Hello
 
     int abs(int x)
     {
-    	
         if (x<0)
             x = 0-x;
         return x;
